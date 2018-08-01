@@ -435,7 +435,7 @@ static int certificate_timeout(ndn_block_t* interest)
     return NDN_APP_CONTINUE; 
 }
 
-static void *ndn_bootstrap(void *ptr)
+void *ndn_bootstrap(void *ptr)
 {
     (void)ptr;
 

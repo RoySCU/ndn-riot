@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-static void *ndn_bootstrap(void *ptr);
+void *ndn_bootstrap(void *ptr);
 
 
 #ifdef __cplusplus
