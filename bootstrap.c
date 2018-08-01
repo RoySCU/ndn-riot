@@ -503,11 +503,9 @@ void *ndn_bootstrap(void *ptr)
     msg_receive(&msg);
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): ipc request got\n", handle->id);
     reply.content.ptr = &certificate_global;
-    if(msg.type == NFL_START_BOOTSTRAP){
-        msg_reply(&msg, &reply);
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): ipc loop quit\n", handle->id);
-        break;
-    } 
+    msg_reply(&msg, &reply);
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): ipc loop quit\n", handle->id);
+    break; 
     }
 
     return NULL;
