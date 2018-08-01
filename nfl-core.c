@@ -31,24 +31,24 @@ static char _stack[NFL_STACK_SIZE];
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
 
-static int nfl_bootstrap_init()
+static int nfl_bootstrap_init(void)
 {
     //these info are static allocated, others all can be deleted after bootstrap
-
+/*
     ndn_block_t* m_Certificate = NULL;
     ndn_block_t* m_anchorCert = NULL;
     ndn_block_t* m_homePrefix = NULL;
     ndn_block_t* m_host = NULL;
     uint8_t BKpub[64];
-    uint8_t BKpri[32];
+    uint8_t BKpri[32];*/
     kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
     char bootstrap_stack[THREAD_STACKSIZE_MAIN];
-
+    return 1;
 }
 
-static int nfl_service_discovery_init()
+static int nfl_service_discovery_init(void)
 {
-
+    return 1;
 }
 static int _start_bootstrap(void* ptr)
 {
@@ -73,7 +73,7 @@ static int _start_bootstrap(void* ptr)
     DPRINT("certificate ipc received, name=");
     ndn_name_print(&name);
     putchar('\n');
-    
+    return 1;
 }
 
 /* Main event loop for NFL */
