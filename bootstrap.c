@@ -9,7 +9,7 @@
 #include "ndn.h"
 #include "encoding/name.h"
 #include "encoding/interest.h"
-#include "nfl-constants.h"
+#include "nfl-constant.h"
 #include "encoding/data.h"
 #include "msg-type.h"
 #include "crypto/ciphers.h"
