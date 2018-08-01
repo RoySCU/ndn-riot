@@ -1,4 +1,4 @@
-#include "nfl.h"
+#include "nfl-core.h"
 #include "face-table.h"
 #include "app.h"
 #include "netif.h"
@@ -10,6 +10,7 @@
 #include "encoding/ndn-constants.h"
 #include "encoding/name.h"
 #include "encoding/interest.h"
+#include "nfl-constant.h"
 #include "msg-type.h"
 
 #define ENABLE_DEBUG 1
