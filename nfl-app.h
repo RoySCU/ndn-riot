@@ -10,3 +10,18 @@
 
 
 
+#ifndef NFL_APP_H_
+#define NFL_APP_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32]);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NFL_APP_H_ */
+/** @} */

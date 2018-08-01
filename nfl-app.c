@@ -12,7 +12,7 @@
     this function is used for ndn-riot app send ipc message to NFL, to start bootstrap 
 */
 
-/*static int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
+int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
 {
     msg_t msg, reply;
     msg.type = NFL_START_BOOTSTRAP;
@@ -26,4 +26,4 @@
 
 
     return 1;
-}*/
+}
