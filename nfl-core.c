@@ -47,12 +47,12 @@ static int nfl_bootstrap_init(void)
     uint8_t BKpri[32];*/
     //kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
     //char bootstrap_stack[THREAD_STACKSIZE_MAIN];
-    return 1;
+    return true;
 }
 
 static int nfl_service_discovery_init(void)
 {
-    return 1;
+    return true;
 }
 static int _start_bootstrap(void* ptr)
 {
@@ -70,14 +70,14 @@ static int _start_bootstrap(void* ptr)
     xtimer_sleep(seconds); //we need some delay to achieve syc comm
     msg_send_receive(&send, &reply, nfl_bootstrap_pid);
 
-    ndn_block_t* cert = NULL;
+    nfl_bootstrap_tuple_t* tuple = reply.content.ptr;
+    ndn_block_t* m_cert = tuple->anchor_cert;
     ndn_block_t name;
-    cert = reply.content.ptr;
-    ndn_data_get_name(cert, &name);
-    DEBUG("certificate ipc received, name=");
+    ndn_data_get_name(m_cert, &name);
+    DEBUG("anchor certificate received through ipc tunnel, name = ");
     ndn_name_print(&name);
     putchar('\n');
-    return 1;
+    return true;
 }
 
 /* Main event loop for NFL */
