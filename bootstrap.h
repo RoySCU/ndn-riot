@@ -1,3 +1,5 @@
+#ifndef NDN_BOOTSTRAP_H_
+#define NDN_BOOTSTRAP_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,3 +12,5 @@ static void *ndn_bootstrap(void *ptr);
 }
 #endif
 
+#endif /* NDN_BOOTSTRAP_H_ */
+/** @} */
