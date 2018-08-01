@@ -5,7 +5,6 @@
 #include "random.h"
 #include "xtimer.h"
 #include <hashes/sha256.h>
-#include <encoding/ndn-constants.h>
 #include <app.h>
 #include <ndn.h>
 #include <encoding/name.h>
