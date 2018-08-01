@@ -495,8 +495,6 @@ void *ndn_bootstrap(void *ptr)
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): returned from app run loop\n",
            handle->id);
 
-    ndn_app_destroy(handle);
-
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): into ipc loop\n", handle->id);
 
     while(1){
@@ -508,5 +506,6 @@ void *ndn_bootstrap(void *ptr)
     break; 
     }
 
+    ndn_app_destroy(handle);
     return NULL;
 }
