@@ -5,17 +5,17 @@
 #include "random.h"
 #include "xtimer.h"
 #include <hashes/sha256.h>
-#include <app.h>
-#include <ndn.h>
-#include <encoding/name.h>
-#include <encoding/interest.h>
-#include <encoding/data.h>
-#include <msg-type.h>
-#include <crypto/ciphers.h>
-#include <uECC.h>
+#include "app.h"
+#include "ndn.h"
+#include "encoding/name.h"
+#include "encoding/interest.h"
+#include "encoding/data.h"
+#include "msg-type.h"
+#include "crypto/ciphers.h"
+#include "uECC.h"
 #include <string.h>
-#include <nfl-block.h>
-#include <bootstrap.h>
+#include "nfl-block.h"
+#include "bootstrap.h"
 
 #ifndef FEATURE_PERIPH_HWRNG
 typedef struct uECC_SHA256_HashContext {
