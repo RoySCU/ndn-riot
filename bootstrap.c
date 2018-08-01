@@ -16,6 +16,7 @@
 #include <uECC.h>
 #include <string.h>
 #include <nfl-block.h>
+#include <bootstrap.h>
 
 #ifndef FEATURE_PERIPH_HWRNG
 typedef struct uECC_SHA256_HashContext {
