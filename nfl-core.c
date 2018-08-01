@@ -30,6 +30,8 @@ static char _stack[NFL_STACK_SIZE];
 #endif
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
+kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
+char bootstrap_stack[THREAD_STACKSIZE_MAIN];
 
 static int nfl_bootstrap_init(void)
 {
@@ -41,8 +43,8 @@ static int nfl_bootstrap_init(void)
     ndn_block_t* m_host = NULL;
     uint8_t BKpub[64];
     uint8_t BKpri[32];*/
-    kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
-    char bootstrap_stack[THREAD_STACKSIZE_MAIN];
+    //kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
+    //char bootstrap_stack[THREAD_STACKSIZE_MAIN];
     return 1;
 }
 
