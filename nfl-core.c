@@ -10,8 +10,10 @@
 #include "encoding/ndn-constants.h"
 #include "encoding/name.h"
 #include "encoding/interest.h"
+#include "encoding/data.h"
 #include "nfl-constant.h"
 #include "msg-type.h"
+#include "bootstrap.h"
 
 #define ENABLE_DEBUG 1
 #include <debug.h>
@@ -72,7 +74,7 @@ static int _start_bootstrap(void* ptr)
     ndn_block_t name;
     cert = reply.content.ptr;
     ndn_data_get_name(cert, &name);
-    DPRINT("certificate ipc received, name=");
+    DEBUG("certificate ipc received, name=");
     ndn_name_print(&name);
     putchar('\n');
     return 1;
