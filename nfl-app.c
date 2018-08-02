@@ -2,7 +2,6 @@
 #include <sys/types.h>
 #include "encoding/block.h"
 #include <thread.h>
-#include "nfl-block.h"
 #include "ndn.h"
 #include "nfl-core.h"
 #include "nfl-app.h"
