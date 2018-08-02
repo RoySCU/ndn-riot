@@ -10,7 +10,7 @@ typedef struct nfl_key_pair_t {
 } nfl_key_pair_t;
 
 typedef struct nfl_bootstrap_tuple_t {
-    const ndn_block_t* m_cert;     
-    const ndn_block_t* anchor_cert;
-    const ndn_block_t* home_prefix;        
+    ndn_block_t* m_cert;     
+    ndn_block_t* anchor_cert;
+    ndn_block_t* home_prefix;        
 } nfl_bootstrap_tuple_t;

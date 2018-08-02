@@ -56,7 +56,7 @@ static int _start_bootstrap(void* ptr)
     
     //store the ipc message in nfl maintained tuple 
     bootstrapTuple = reply.content.ptr;
-    const ndn_block_t* m_cert = bootstrapTuple->anchor_cert;
+    ndn_block_t* m_cert = bootstrapTuple->anchor_cert;
     ndn_block_t name;
     ndn_data_get_name(m_cert, &name);
     DEBUG("anchor certificate received through ipc tunnel, name = ");
