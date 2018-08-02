@@ -14,7 +14,7 @@
 #include "nfl-constant.h"
 #include "msg-type.h"
 #include "bootstrap.h"
-
+#include "nfl-block.h"
 #define ENABLE_DEBUG 1
 #include <debug.h>
 #include <thread.h>
