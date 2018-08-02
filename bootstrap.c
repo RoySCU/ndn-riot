@@ -59,7 +59,7 @@ static ndn_block_t anchor_global;
 static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
 static ndn_block_t com_cert;
-static ndn_bootstrap_tuple_t tuple;
+static nfl_bootstrap_tuple_t tuple;
 
 static uint8_t ecc_key_pri[] = {             
      0x38, 0x67, 0x54, 0x73, 0x8B, 0x72, 0x4C, 0xD6,
