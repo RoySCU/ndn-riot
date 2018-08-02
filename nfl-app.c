@@ -12,6 +12,8 @@
     this function is used for ndn-riot app send ipc message to NFL, to start bootstrap 
 */
 
+static nfl_bootstrap_tuple_t store;
+
 int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
 {
     msg_t msg, reply;
@@ -23,13 +25,14 @@ int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
     msg_send_receive(&msg, &reply, nfl_pid); 
     DEBUG("NFL: bootstrap request processed from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
-
+                      
 
     return true;
 }
 
 int nfl_extract_home_prefix(ndn_block_t* home_prefix)
 {
+    
     return true;
 }
 
