@@ -25,23 +25,20 @@ int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
     msg_send_receive(&msg, &reply, nfl_pid); 
     DEBUG("NFL: bootstrap request processed from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
-                      
+
 
     return true;
 }
 
-int nfl_extract_home_prefix(ndn_block_t* home_prefix)
+int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple)
 {
-    
-    return true;
-}
+    msg_t msg, reply;
+    msg.type = NFL_EXTRACT_BOOTSTRAP_TUPLE;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+    DEBUG("NFL: bootstrap request processed from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
 
-int nfl_extract_m_cert(ndn_block_t* m_Certificate)
-{
-    return true;
-}
-
-int nfl_extract_anchor_cert(ndn_block_t* anchor_cert)
-{
+    tuple = reply.content.ptr;
     return true;
 }
