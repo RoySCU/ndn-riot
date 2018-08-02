@@ -25,8 +25,6 @@ extern kernel_pid_t nfl_pid;
 kernel_pid_t nfl_init(void);
 
 
-//below are the tables and tuples the NFL thread need to maintain
-static nfl_bootstrap_tuple_t* bootstrapTuple;
 
 
 #ifdef __cplusplus
