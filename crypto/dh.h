@@ -3,10 +3,9 @@
 #include<time.h>
 #include<string.h>
 
-#define MAX 500 //运算中的最高可能位数
-#define NUMP 2 //已提供的素数个数
-#define NUMG 50 //随机数g的位数
-#define swap(x,y) x^=y^=x^=y
+#define MAX 500 
+#define NUMP 2 
+#define NUMG 50 
 
 char p_set[NUMP][110]=
 {

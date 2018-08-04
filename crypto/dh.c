@@ -76,7 +76,10 @@ void reverse(char* a)
 {
     int i, n;
     n = get_n(a);
-    for(i = 0; i < n/2; i++) swap(a[i], a[n - 1 - i]);
+    for(i = 0; i < n/2; i++) {
+        char t = a[i];
+        a[i] = a[n - 1 - i];
+        a[n - 1 - i] = t;
 }
 
 void get_a(char* a)
@@ -162,11 +165,11 @@ void rec(int b, char *p, char *g, char *ans)
     }
 }
 
-void get_key(int b, char *rec, char*p, char*g, char *ans)
+void get_key(int b, char *rec, char* p, char* g, char *ans)
 {
     char t[MAX] = {0};
     int i;
-
+    (void)g;  //avoid compiler
     for(i = 0; i < MAX; i++) t[i] = rec[i], ans[i] = 0;
     ans[0] = 1;
     for(i = 0; i < 32; i++)
@@ -180,26 +183,3 @@ void get_key(int b, char *rec, char*p, char*g, char *ans)
         get_mod(t, p);
     }
 }
-
-/*
-void main()      //用单机模拟双机的密钥交换过程
-{
-    char sa[MAX],sb[MAX],p[MAX],g[MAX],ak[MAX],bk[MAX];
-    int a,b;
-    printf("A选择的随机数：");
-    scanf("%d",&a);
-    printf("B选择的随机数：");
-    scanf("%d",&b);
-    sent(a,p,g,sa);   //A将sa=p^a get_mod g和p，g的值发送给B，
-    rec(b,p,g,sb);   //B收到后用收到的p,g计算出sb=p^b get_mod g，并将结果返回给A
-    get_key(a,sb,p,g,ak);   //A得到的密钥为ak=sb^a get_mod g
-    get_key(b,sa,p,g,bk);   //B得到的密钥为bk=sa^a get_mod g
-
-    //输出A得到的密钥ak，和B得到的密钥bk,根据取模的性质，ak==bk
-    printf("A得到的密钥为：\n");
-    display(ak);
-    printf("\n");
-    printf("B得到的密钥为：\n");
-    display(bk);
-    printf("\n");
-}*/
