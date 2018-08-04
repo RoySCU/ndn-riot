@@ -30,7 +30,7 @@ int get_mul(char* a,char* b)
 
 int get_mod(char* a,char* b)
 {
-    int na, nb, i, u, f = 0, n;
+    int na, nb, i, u, f = 0, n = 0;
     na = get_n(a);
     nb = get_n(b);
     u = na - nb;
