@@ -10,7 +10,7 @@ int get_n(char* a)
 
 int get_mul(char* a,char* b)
 {
-    int na, nb, i, j;
+    int na, nb, i, j, n = 0;
     char c[MAX], d[MAX];
     for(i = 0; i < MAX; i++) c[i] = a[i], d[i] = b[i], a[i]=0;
     na = get_n(c);
@@ -25,7 +25,7 @@ int get_mul(char* a,char* b)
         if(a[i]) n = i + 1;
         if(a[i] > 9) a[i + 1] += a[i] / 10, a[i] %= 10;
     }
-    return 0;
+    return n;
 }
 
 int get_mod(char* a,char* b)
@@ -63,7 +63,7 @@ int get_mod(char* a,char* b)
             for(i = u; i < na; i++)
             {
                 a[i] -= b[i - u];
-                if(a[i]<0) a[i + 1]--, a[i] += 10;
+                //if(a[i]<0) a[i + 1]--, a[i] += 10;
             }
         }
     }
