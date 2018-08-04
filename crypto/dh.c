@@ -77,10 +77,9 @@ void reverse(char* a)
     int i, n;
     n = get_n(a);
     for(i = 0; i < n/2; i++) {
-        char tmp = a[i];
+        char t = a[i];
         a[i] = a[n - 1 - i];
-        a[n - 1 - i] = tmp;
-    }
+        a[n - 1 - i] = t;
 }
 
 void get_a(char* a)
