@@ -63,7 +63,7 @@ int get_mod(char* a,char* b)
             for(i = u; i < na; i++)
             {
                 a[i] -= b[i - u];
-                if(!(a[i] >= 0)) a[i + 1]--, a[i] += 10;
+ //               if(a[i] < 0) a[i + 1]--, a[i] += 10;
             }
         }
     }
