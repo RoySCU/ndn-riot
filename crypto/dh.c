@@ -80,6 +80,7 @@ void reverse(char* a)
         char t = a[i];
         a[i] = a[n - 1 - i];
         a[n - 1 - i] = t;
+    }
 }
 
 void get_a(char* a)
