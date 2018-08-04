@@ -7,7 +7,7 @@
 #define NUMP 2 
 #define NUMG 50 
 
-char p_set[NUMP][9]=
+char p_set[NUMP][10]=
 {
     {"100001623"},
     {"100001651"}
