@@ -108,7 +108,7 @@ void get_g(char* a)
 void get_p(char* a, int n)
 {
     int i;
-    for(i = 0; i < 10 ; i++) a[i] = p_set[n][i];
+    for(i=0; i<100; i++)a[i]=p_set[n][i];
 }
 
 void display(char* a)
