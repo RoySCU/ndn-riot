@@ -514,7 +514,7 @@ s = 4^3 mod 23 = 18
     bit_1[3] = Montgomery(dh_g, secrete_1[3], dh_p);
     //append the bit_1
     uint8_t* buf_dh = (uint8_t*)malloc(8 * 4);
-    ndn_shared_block_t* sn2_new = ndn_name_append(&sn1->block, buf_sinfo, 32); 
+    ndn_shared_block_t* sn2_new = ndn_name_append(&sn1->block, buf_dh, 32); 
     ndn_shared_block_release(sn1);
 
     //now we have signinfo but carrying no keylocator
