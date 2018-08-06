@@ -422,10 +422,8 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     buf += 2;
     len -= 2;//skip header
     //process the token (4 * uint64_t)
-    memcpy(bit_2, buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2 + 8, buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2 + 16, buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2 + 24, buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2, buf, 32); buf += 32; len -= 32;
+
 /*
 Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
 Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
