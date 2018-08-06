@@ -61,6 +61,14 @@ static ndn_block_t home_prefix;
 static ndn_block_t com_cert;
 static nfl_bootstrap_tuple_t tuple;
 
+static uint64_t dh_p = 23;
+static uint64_t dh_g = 5;
+static uint32_t secrete_1[4];
+static uint64_t bit_1[4];
+static uint64_t bit_2[4];
+static uint64_t shared[4];
+
+/* this is secp256r1 key, now we use secp160r1
 static uint8_t ecc_key_pri[] = {             
      0x38, 0x67, 0x54, 0x73, 0x8B, 0x72, 0x4C, 0xD6,
      0x3E, 0xBD, 0x52, 0xF3, 0x64, 0xD8, 0xF5, 0x7F,
@@ -77,7 +85,7 @@ static uint8_t ecc_key_pub[] = {
     0x91, 0xAC, 0xB9, 0xD1, 0x19, 0xE9, 0x5E, 0x97,
     0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11,
     0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
-};
+};*/
 
 static uint8_t com_key_pri[] = {             
      0x38, 0x67, 0x54, 0x73, 0x8B, 0x72, 0x4C, 0xD6,
@@ -97,6 +105,42 @@ static uint8_t com_key_pub[] = {
     0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
 };
 
+static uint8_t ecc_key_pri[] = {
+    0x00, 0x79, 0xD8, 0x8A, 0x5E, 0x4A, 0xF3, 0x2D,
+    0x36, 0x03, 0x89, 0xC7, 0x92, 0x3B, 0x2E, 0x50, 
+    0x7C, 0xF7, 0x6E, 0x60, 0xB0, 0xAF, 0x26, 0xE4,
+    0x42, 0x9D, 0xC8, 0xCE, 0xF0, 0xDE, 0x75, 0xB3 
+};
+
+static uint8_t ecc_key_pub[] = {
+    0xB2, 0xFC, 0x62, 0x14, 0x78, 0xDC, 0x10, 0xEA, 
+    0x61, 0x42, 0xB9, 0x34, 0x67, 0xE6, 0xDD, 0xE3,
+    0x3D, 0x35, 0xAA, 0x5B, 0xA4, 0x24, 0x6C, 0xD4, 
+    0xB4, 0xED, 0xD8, 0xA4, 0x59, 0xA7, 0x32, 0x12,
+    0x57, 0x37, 0x90, 0x5D, 0xED, 0x37, 0xC8, 0xE8,
+    0x6A, 0x81, 0xE5, 0x8F, 0xBE, 0x6B, 0xD3, 0x27,
+    0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11, 
+    0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
+}; // this is secp160r1 key
+
+
+uint64_t Montgomery(uint64_t n, uint32_t p, uint64_t m)     
+{      
+    uint64_t r = n % m;     
+    uint64_t tmp = 1;     
+    while (p > 1)     
+    {     
+        if ((p & 1)!=0)     
+        {     
+            tmp = (tmp * r) % m;     
+        }     
+        r = (r * r) % m;     
+        p >>= 1;     
+    }     
+    return (r * tmp) % m;     
+}    
+
+
 //segment for signature and buffer_signature to write, returning the pointer to the buffer
 //this function will automatically skip the NAME header, so just pass the whole NAME TLV 
 static int ndn_make_signature(uint8_t pri_key[32], ndn_block_t* seg, uint8_t* buf_sig)
@@ -108,7 +152,7 @@ static int ndn_make_signature(uint8_t pri_key[32], ndn_block_t* seg, uint8_t* bu
     uint8_t h[32] = {0}; 
 
     sha256(seg->buf + 1 + gl, seg->len - 1 - gl, h);
-    uECC_Curve curve = uECC_secp256r1();
+    uECC_Curve curve = uECC_secp160r1();
 
 #ifndef FEATURE_PERIPH_HWRNG
     // allocate memory on heap to avoid stack overflow
@@ -150,6 +194,20 @@ static int ndn_make_signature(uint8_t pri_key[32], ndn_block_t* seg, uint8_t* bu
     return 0; //success
 }
 
+static int ndn_make_hmac_signature(uint8_t* key_ptr, ndn_block_t* seg, uint8_t* buf_sig)
+{
+    //when you use this function, please check the length of buf_sig is 34
+    uint32_t num;
+    buf_sig[0] = NDN_TLV_SIGNATURE_VALUE;
+    ndn_block_put_var_number(32, buf_sig + 1, 34 -1);
+    int gl = ndn_block_get_var_number(seg->buf + 1, seg->len - 1, &num);
+    hmac_sha256(key, 8 * 4, (const unsigned*)(seg->buf + 1 + gl), //hard code the shared secret length
+                        seg->len - 1 - gl, buf_sig + 2);
+
+
+    return 0; //success
+}
+
 static int bootstrap_timeout(ndn_block_t* interest);
 
 static int certificate_timeout(ndn_block_t* interest);
@@ -172,12 +230,12 @@ static int on_certificate_response(ndn_block_t* interest, ndn_block_t* data)
     ndn_name_print(&name1);
     putchar('\n');
 
-    r = ndn_data_verify_signature(data, anchor_key_pub, sizeof(anchor_key_pub)); 
+    r = ndn_data_verify_signature(data, (uint8_t*)shared, 8 * 4); 
     if (r != 0)
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): fail to verify certificate response\n",
+        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): fail to verify certificate response, use HMAC\n",
                handle->id);
     else{ 
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): certificate response valid\n",
+        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): certificate response valid, use HMAC\n",
                handle->id);
 
         /* install the certificate */
@@ -282,10 +340,10 @@ static int ndn_app_express_certificate_request(void)
     buf_sinfo1 = NULL;
     ndn_shared_block_release(sn8_cert);
 
-    /* append the signature by BKpub */
-    uint8_t* buf_bk = (uint8_t*)malloc(66); //64 bytes reserved from the value, 2 bytes for header 
-    ndn_make_signature(ecc_key_pri, &sn9_cert->block, buf_bk);
-    ndn_shared_block_t* sn10_cert = ndn_name_append(&sn9_cert->block, buf_bk, 66);   
+    /* append the signature by shared secret derived HMAC */
+    uint8_t* buf_bk = (uint8_t*)malloc(34); //32 bytes reserved from the value, 2 bytes for header 
+    ndn_make_hmac_signature((uint8_t*)shared, &sn9_cert->block, buf_bk);
+    ndn_shared_block_t* sn10_cert = ndn_name_append(&sn9_cert->block, buf_bk, 34);   
     free((void*)buf_bk);
     buf_bk = NULL;
     ndn_shared_block_release(sn9_cert);
@@ -360,9 +418,29 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
 
     //skip token's TLV (and push it back completely)
     token.buf = buf;
-    token.len = 10;
-    buf += 10;
-    len -= 10;
+    token.len = 34;
+    buf += 2;
+    len -= 2;//skip header
+    //process the token (4 * uint64_t)
+    memcpy(bit_2[0], buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2[1], buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2[2], buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2[3], buf, 8); buf += 8; len -= 8;
+/*
+Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
+Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
+A = 5^4 mod 23 = 4
+Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
+B = 5^3 mod 23 = 10
+Alice computes s = B^a mod p
+s = 10^4 mod 23 = 18
+Bob computes s = A^b mod p
+s = 4^3 mod 23 = 18
+*/
+    shared[0] = Montgomery(bit_2[0], secrete_1[0], dh_p);
+    shared[1] = Montgomery(bit_2[1], secrete_1[1], dh_p);
+    shared[2] = Montgomery(bit_2[2], secrete_1[2], dh_p);
+    shared[3] = Montgomery(bit_2[3], secrete_1[3], dh_p);
 
     //skip 32 bytes of public key's hash (plus 2 types header)
     buf += 34;
@@ -414,6 +492,31 @@ static int ndn_app_express_bootstrapping_request(void)
     free(buf_dibs);
     ndn_shared_block_release(sn);
 
+    //TODO: 256bit Diffie Hellman 
+    secrete_1[0]  = random_uint32();
+    secrete_1[1]  = random_uint32();
+    secrete_1[2]  = random_uint32();
+    secrete_1[3]  = random_uint32();
+/*
+Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
+Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
+A = 5^4 mod 23 = 4
+Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
+B = 5^3 mod 23 = 10
+Alice computes s = B^a mod p
+s = 10^4 mod 23 = 18
+Bob computes s = A^b mod p
+s = 4^3 mod 23 = 18
+*/
+    bit_1[0] = Montgomery(dh_g, secrete_1[0], dh_p);
+    bit_1[1] = Montgomery(dh_g, secrete_1[1], dh_p);
+    bit_1[2] = Montgomery(dh_g, secrete_1[2], dh_p);
+    bit_1[3] = Montgomery(dh_g, secrete_1[3], dh_p);
+    //append the bit_1
+    uint8_t* buf_dh = (uint8_t*)malloc(8 * 4);
+    ndn_shared_block_t* sn2_new = ndn_name_append(&sn1->block, buf_sinfo, 32); 
+    ndn_shared_block_release(sn1);
+
     //now we have signinfo but carrying no keylocator
     // Write signature info header 
     uint8_t* buf_sinfo = (uint8_t*)malloc(5); 
@@ -426,9 +529,9 @@ static int ndn_app_express_bootstrapping_request(void)
     buf_sinfo[4] = NDN_SIG_TYPE_ECDSA_SHA256;
 
     //append the signatureinfo
-    ndn_shared_block_t* sn2 = ndn_name_append(&sn1->block, buf_sinfo, 5); 
+    ndn_shared_block_t* sn2 = ndn_name_append(&sn2_new->block, buf_sinfo, 5); 
     free(buf_sinfo);
-    ndn_shared_block_release(sn1);
+    ndn_shared_block_release(sn2_new);
 
     //making and append ECDSA signature by BKpri
     uint8_t* buf_sibs = (uint8_t*)malloc(66); //64 bytes for the value, 2 bytes for header 
