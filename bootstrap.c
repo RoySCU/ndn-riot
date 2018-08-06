@@ -125,7 +125,7 @@ static uint8_t ecc_key_pub[] = {
 }; // this is secp160r1 key
 
 
-uint64_t Montgomery(uint64_t n, uint32_t p, uint64_t m)     
+static uint64_t Montgomery(uint64_t n, uint32_t p, uint64_t m)     
 {      
     uint64_t r = n % m;     
     uint64_t tmp = 1;     
