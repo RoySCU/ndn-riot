@@ -185,7 +185,7 @@ ndn_shared_block_t* ndn_data_create(ndn_block_t* name,
             buf[1] = 64;
             uint8_t h[32] = {0};
             sha256(data.buf + 1 + dataLength, dl - 66, h);
-            uECC_Curve curve = uECC_secp192r1();
+            uECC_Curve curve = uECC_secp160r1();
 
 #ifndef FEATURE_PERIPH_HWRNG
             // allocate memory on heap to avoid stack overflow
@@ -373,7 +373,7 @@ ndn_shared_block_t* ndn_data_create2(ndn_name_t* name,
             buf[1] = 64;
             uint8_t h[32] = {0};
             sha256(data.buf + 2, dl - 66, h);
-            uECC_Curve curve = uECC_secp192r1();
+            uECC_Curve curve = uECC_secp160r1();
 
 #ifndef FEATURE_PERIPH_HWRNG
             // allocate memory on heap to avoid stack overflow
@@ -945,7 +945,7 @@ int ndn_data_verify_signature(ndn_block_t* block,
             }
             uint8_t h[32] = {0};
             sha256(sig_start, sig_value.buf - sig_start, h);
-            uECC_Curve curve = uECC_secp192r1();
+            uECC_Curve curve = uECC_secp160r1();
             if (uECC_verify(key, h, sizeof(h),
                             sig_value.buf + 2, curve) == 0) {
                 DEBUG("ndn_encoding: fail to verify ECDSA_SHA256 signature\n");
