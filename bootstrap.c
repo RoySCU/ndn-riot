@@ -201,7 +201,7 @@ static int ndn_make_hmac_signature(uint8_t* key_ptr, ndn_block_t* seg, uint8_t* 
     buf_sig[0] = NDN_TLV_SIGNATURE_VALUE;
     ndn_block_put_var_number(32, buf_sig + 1, 34 -1);
     int gl = ndn_block_get_var_number(seg->buf + 1, seg->len - 1, &num);
-    hmac_sha256(key, 8 * 4, (const unsigned*)(seg->buf + 1 + gl), //hard code the shared secret length
+    hmac_sha256(key_ptr, 8 * 4, (const unsigned*)(seg->buf + 1 + gl), //hard code the shared secret length
                         seg->len - 1 - gl, buf_sig + 2);
 
 
@@ -422,10 +422,10 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     buf += 2;
     len -= 2;//skip header
     //process the token (4 * uint64_t)
-    memcpy(bit_2[0], buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2[1], buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2[2], buf, 8); buf += 8; len -= 8;
-    memcpy(bit_2[3], buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2, buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2 + 8, buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2 + 16, buf, 8); buf += 8; len -= 8;
+    memcpy(bit_2 + 24, buf, 8); buf += 8; len -= 8;
 /*
 Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
 Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
@@ -514,6 +514,7 @@ s = 4^3 mod 23 = 18
     bit_1[3] = Montgomery(dh_g, secrete_1[3], dh_p);
     //append the bit_1
     uint8_t* buf_dh = (uint8_t*)malloc(8 * 4);
+    memcpy(buf_dh, bit_1, 32);
     ndn_shared_block_t* sn2_new = ndn_name_append(&sn1->block, buf_dh, 32); 
     ndn_shared_block_release(sn1);
 
