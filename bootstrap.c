@@ -588,7 +588,8 @@ void *ndn_bootstrap(void *ptr)
                thread_getpid());
         return NULL;
     }
-
+    uint32_t begin, end;
+    begin = xtimer_now_usec();
     ndn_app_express_bootstrapping_request();  /* where all bootstrapping start */
 
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): enter app run loop\n",
@@ -598,7 +599,10 @@ void *ndn_bootstrap(void *ptr)
 
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): returned from app run loop\n",
            handle->id);
-
+    end = xtimer_now_usec();
+    printf("bootstrap finished in %"PRIu32" s"
+           "\n",
+           (end - begin)/1000000);
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): into ipc loop\n", handle->id);
 
     while(1){
