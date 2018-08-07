@@ -61,8 +61,8 @@ static ndn_block_t home_prefix;
 static ndn_block_t com_cert;
 static nfl_bootstrap_tuple_t tuple;
 
-static uint64_t dh_p = 541;
-static uint64_t dh_g = 10;
+static uint64_t dh_p = 10000831;
+static uint64_t dh_g = 10000769;
 static uint32_t secrete_1[4];
 static uint64_t bit_1[4];
 static uint64_t bit_2[4];
