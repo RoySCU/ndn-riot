@@ -58,7 +58,7 @@ static uint32_t begin;
 static ndn_block_t anchor_global;
 static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
-static ndn_block_t com_cert;
+//static ndn_block_t com_cert;
 static nfl_bootstrap_tuple_t tuple;
 
 static uint64_t dh_p = 10000831;
@@ -279,15 +279,7 @@ static int ndn_app_express_certificate_request(void)
     buf_di = NULL;
     ndn_shared_block_release(sn1_cert);
 
-    /* apppend the device name */  
-    const char* uri1_cert = "/device_1";  //info from device itself
-    ndn_shared_block_t* sn3_cert = ndn_name_from_uri(uri1_cert, strlen(uri1_cert));
-    //move the pointer by 4 bytes: 2 bytes for name header, 2 bytes for component header
-    ndn_shared_block_t* sn4_cert = ndn_name_append(&home_prefix,
-                                   (&sn3_cert->block)->buf + 4, (&sn3_cert->block)->len - 4);
-    ndn_shared_block_release(sn3_cert);
-
-    ndn_block_t keybuffer = {com_key_pub, sizeof(com_key_pub)};
+    /*ndn_block_t keybuffer = {com_key_pub, sizeof(com_key_pub)};
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
     ndn_shared_block_t* signed_com =
         ndn_data_create(&sn4_cert->block, &meta, &keybuffer,
@@ -300,18 +292,18 @@ static int ndn_app_express_certificate_request(void)
         return NDN_APP_ERROR;
     }
 
-    com_cert = signed_com->block;
+    com_cert = signed_com->block;*/
 
-    ndn_shared_block_t* sn5_cert = ndn_name_append(&sn2_cert->block, signed_com->block.buf, signed_com->block.len); 
+    ndn_shared_block_t* sn5_cert = ndn_name_append(&sn2_cert->block, com_key_pub, sizeof(com_key_pub)); 
     ndn_shared_block_release(sn2_cert);
  
     /* make the signature of token */
     /* make a block for token */
-    uint8_t* buf_tk = (uint8_t*)malloc(66); //64 bytes reserved from the value, 2 bytes for header
-    ndn_make_signature(com_key_pri, &token, buf_tk);
+    uint8_t* buf_tk = (uint8_t*)malloc(34); //32 bytes reserved from the value, 2 bytes for header
+    ndn_make_hmac_signature((uint8_t*)shared, &token, buf_tk);
 
     /* append the signature of token */
-    ndn_shared_block_t* sn6_cert = ndn_name_append(&sn5_cert->block, buf_tk, 66);
+    ndn_shared_block_t* sn6_cert = ndn_name_append(&sn5_cert->block, buf_tk, 34);
     free((void*)buf_tk);
     buf_tk = NULL;
     ndn_shared_block_release(sn5_cert);
@@ -333,7 +325,7 @@ static int ndn_app_express_certificate_request(void)
     // Write signature type (true signatureinfo content)
     buf_sinfo1[2] = NDN_TLV_SIGNATURE_TYPE;
     buf_sinfo1[3] = 1;
-    buf_sinfo1[4] = NDN_SIG_TYPE_ECDSA_SHA256;
+    buf_sinfo1[4] = NDN_SIG_TYPE_HMAC_SHA256;
 
     //append the signatureinfo
     ndn_shared_block_t* sn9_cert = ndn_name_append(&sn8_cert->block, buf_sinfo1, 5); 
