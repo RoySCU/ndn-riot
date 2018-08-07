@@ -600,7 +600,7 @@ void *ndn_bootstrap(void *ptr)
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): returned from app run loop\n",
            handle->id);
     end = xtimer_now_usec();
-    printf("bootstrap finished in %"PRIu32" s"
+    DPRINT("bootstrap finished in %"PRIu32" s"
            "\n",
            (end - begin)/1000000);
     DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): into ipc loop\n", handle->id);
