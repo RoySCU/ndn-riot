@@ -303,7 +303,7 @@ static int on_upload_request(ndn_block_t* interest)
     if (uploaded_packet == NULL) {
         DPRINT("Device (pid=%" PRIkernel_pid "): cannot create uploaded packet\n",
                handle->id);
-        ndn_shared_block_release(uploaded_name);
+        ndn_shared_block_release(upload_name);
         return NDN_APP_ERROR;
     }
 
