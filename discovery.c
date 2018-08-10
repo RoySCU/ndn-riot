@@ -51,7 +51,6 @@ static void _finish_sha256(const uECC_HashContext *base, uint8_t *hash_result)
 static ndn_app_t* handle = NULL;
 
 static nfl_bootstrap_tuple_t tuple;
-static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
 static ndn_block_t served_prefixes;
 
@@ -72,7 +71,7 @@ static uint8_t com_key_pub[] = {
     0x6A, 0x81, 0xE5, 0x8F, 0xBE, 0x6B, 0xD3, 0x27,
     0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11, 
     0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
-}; // this is secp160r1 key*/
+}; // this is secp160r1 key
 
 
 static uint8_t ecc_key_pri[] = {
@@ -91,7 +90,7 @@ static uint8_t ecc_key_pub[] = {
     0x6A, 0x81, 0xE5, 0x8F, 0xBE, 0x6B, 0xD3, 0x27,
     0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11, 
     0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
-}; // this is secp160r1 key
+}; // this is secp160r1 key*/
 
 
 //segment for signature and buffer_signature to write, returning the pointer to the buffer
@@ -184,7 +183,7 @@ static int on_query_response(ndn_block_t* interest, ndn_block_t* data)
         
     //skip the content header and install served prefixes
     served_prefixes.buf = content.buf + 2;
-    served_prefixes.len = content_cert.len - 2;
+    served_prefixes.len = content.len - 2;
    
     DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): served prefixes block installed, length = %d\n",
                handle->id,  served_prefixes.len);
@@ -367,7 +366,7 @@ void *ndn_discovery(void *ptr)
         DPRINT("Device (pid=%" PRIkernel_pid "): failed to register upload prefix\n",
                handle->id);
         ndn_app_destroy(handle);
-        return;
+        return NULL;
     }
 
     DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): enter round trip 1\n",
