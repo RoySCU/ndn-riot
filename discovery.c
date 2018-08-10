@@ -177,10 +177,7 @@ static int on_query_response(ndn_block_t* interest, ndn_block_t* data)
     /* install the served prefixes */
     ndn_block_t content;
     r = ndn_data_get_content(data, &content);
-    assert(r == 0);
-        
-    const uint8_t* buf_cert = content.buf;
-        
+    assert(r == 0);        
     //skip the content header and install served prefixes
     served_prefixes.buf = content.buf + 2;
     served_prefixes.len = content.len - 2;
@@ -207,7 +204,7 @@ static int ndn_app_express_discovery_query(void)
 
     //now we have signinfo but carrying no keylocator
     // Write signature info header 
-    uint8_t buf_sinfo[5]; 
+    uint8_t* buf_sinfo = (uint8_t*)malloc(5); 
     buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
     buf_sinfo[1] = 3;
 
@@ -222,7 +219,7 @@ static int ndn_app_express_discovery_query(void)
 
     /* append the signature by CK */
     uint8_t buf_ck[66]; //64 bytes reserved from the value, 2 bytes for header 
-    ndn_make_signature(&sn2_query->block, com_key_pri, buf_ck);
+    ndn_make_signature(com_key_pri, &sn2_query->block, buf_ck);
     ndn_shared_block_t* sn3_query = ndn_name_append(&sn2_query->block, buf_ck, 66);   
     ndn_shared_block_release(sn2_query);
 
@@ -244,7 +241,7 @@ static int ndn_app_express_discovery_query(void)
     return NDN_APP_CONTINUE;
 }
 
-static int on_upload_request(ndn_block_t* interest, ndn_block_t* data)
+static int on_upload_request(ndn_block_t* interest)
 {
     /* 
         Controller: Interest->/<home prefix>/<valid host name>/service/<CK signature>
@@ -261,7 +258,7 @@ static int on_upload_request(ndn_block_t* interest, ndn_block_t* data)
     ndn_name_print(&req);
     putchar('\n');
 
-    ndn_shared_block_t* upload_name = ndn_name_append_uint8(&re, 3);
+    ndn_shared_block_t* upload_name = ndn_name_append_uint8(&req, 3);
     if (upload_name == NULL) {
         DPRINT("Device (pid=%" PRIkernel_pid "): cannot append Version component to "
                "name\n", handle->id);
@@ -279,7 +276,7 @@ static int on_upload_request(ndn_block_t* interest, ndn_block_t* data)
     ndn_shared_block_t* service[3];
     service[0] = ndn_name_from_uri(served_prefix0, strlen(served_prefix0));
     service[1] = ndn_name_from_uri(served_prefix1, strlen(served_prefix1));
-    service[2] = ndn_name_from_uri(served_prefix2, strlen(served_prefix2))
+    service[2] = ndn_name_from_uri(served_prefix2, strlen(served_prefix2));
 
     //prepare the uploaded content
     ndn_block_t bigbuffer;
@@ -354,7 +351,7 @@ void *ndn_discovery(void *ptr)
     */
     nfl_extract_bootstrap_tuple(&tuple);
     ndn_block_t r;
-    ndn_data_get_name(tuple->m_cert, &r);
+    ndn_data_get_name(&tuple.m_cert, &r);
 
     const char* uri_req = "/service"; 
     ndn_shared_block_t* sn_req = ndn_name_from_uri(uri_req, strlen(uri_req));
