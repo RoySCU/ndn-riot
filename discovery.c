@@ -214,7 +214,7 @@ static int ndn_app_express_discovery_query(void)
     buf_sinfo[4] = NDN_SIG_TYPE_ECDSA_SHA256;
 
     //append the signatureinfo
-    ndn_shared_block_t* sn2_query = ndn_name_append(&sn1_query->block, &buf_sinfo, 5); 
+    ndn_shared_block_t* sn2_query = ndn_name_append(&sn1_query->block, buf_sinfo, 5); 
     ndn_shared_block_release(sn1_query);
 
     /* append the signature by CK */
@@ -293,7 +293,7 @@ static int on_upload_request(ndn_block_t* interest)
     memcpy(&bigbuffer, service[0]->block.buf, service[0]->block.len);
     memcpy(&bigbuffer + service[0]->block.len, service[1]->block.buf,
                                                service[1]->block.len);
-    memcpy(&bigbuffer + service[0]->block.len + service[1]->block.buf,
+    memcpy(&bigbuffer + service[0]->block.len + service[1]->block.len,
                         service[2]->block.buf, service[2]->block.len);
     //make the packet
     ndn_shared_block_t* uploaded_packet =
@@ -321,7 +321,6 @@ static int on_upload_request(ndn_block_t* interest)
     }
 
     DPRINT("Device (pid=%" PRIkernel_pid "): return to the app\n", handle->id);
-    free(bigbuffer);
     free(uploaded_packet);
     return NDN_APP_STOP;
 }
@@ -351,7 +350,7 @@ void *ndn_discovery(void *ptr)
     */
     nfl_extract_bootstrap_tuple(&tuple);
     ndn_block_t r;
-    ndn_data_get_name(&tuple.m_cert, &r);
+    ndn_data_get_name(tuple.m_cert, &r);
 
     const char* uri_req = "/service"; 
     ndn_shared_block_t* sn_req = ndn_name_from_uri(uri_req, strlen(uri_req));
