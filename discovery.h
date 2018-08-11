@@ -1,6 +1,8 @@
 #ifndef NDN_DISCOVERY_H_
 #define NDN_DISCOVERY_H_
 
+#include "nfl-block.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -11,7 +11,7 @@
 #include "encoding/name.h"
 #include "encoding/interest.h"
 #include "encoding/data.h"
-#include "nfl-constant.h"
+//#include "nfl-constant.h"
 #include "msg-type.h"
 #include "bootstrap.h"
 #include "discovery.h"
