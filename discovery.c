@@ -331,7 +331,7 @@ static int query_timeout(ndn_block_t* interest)
     return NDN_APP_CONTINUE; 
 }
 
-void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple)
+void *ndn_discovery(void* bootstrapTuple)
 {
     if(bootstrapTuple == NULL){
         DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): no bootstrapTuple available\n",
@@ -339,8 +339,9 @@ void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple)
     }
 
     //install home prefix from bootstrapTuple
-    home_prefix.buf = bootstrapTuple->home_prefix->buf;
-    home_prefix.len = bootstrapTuple->home_prefix->len;
+    nfl_bootstrap_tuple_t* tuple = bootstrapTuple; 
+    home_prefix.buf = tuple->home_prefix->buf;
+    home_prefix.len = tuple->home_prefix->len;
 
     msg_t msg, reply;
 
@@ -355,7 +356,7 @@ void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple)
         Controller: Interest->/<home prefix>/<valid host name>/service/<CK signature>
     */
     ndn_block_t r;
-    ndn_data_get_name(bootstrapTuple->m_cert, &r);
+    ndn_data_get_name(tuple->m_cert, &r);
 
     const char* uri_req = "/service"; 
     ndn_shared_block_t* sn_req = ndn_name_from_uri(uri_req, strlen(uri_req));

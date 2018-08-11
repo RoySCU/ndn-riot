@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple);
+void *ndn_discovery(void* bootstrapTuple);
 
 
 #ifdef __cplusplus
