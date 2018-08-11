@@ -14,6 +14,7 @@
 #include "nfl-constant.h"
 #include "msg-type.h"
 #include "bootstrap.h"
+#include "discovery.h"
 #include "nfl-block.h"
 #define ENABLE_DEBUG 1
 #include <debug.h>
@@ -85,8 +86,8 @@ static int _start_discovery(void* ptr)
     msg_send_receive(&send, &reply, nfl_discovery_pid);
     
     //store the ipc message in nfl maintained tuple 
-    serviceTuple = reply.content.ptr;
-    DEBUG("serviceTuple received through ipc tunnel, block length = %d\n", serviceTuple->len);
+    discoveryTuple = reply.content.ptr;
+    DEBUG("discoveryTuple received through ipc tunnel, block length = %d\n", discoveryTuple->len);
     return true;
 }
 
