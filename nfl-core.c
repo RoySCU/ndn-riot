@@ -11,11 +11,11 @@
 #include "encoding/name.h"
 #include "encoding/interest.h"
 #include "encoding/data.h"
-//#include "nfl-constant.h"
+#include "nfl-constant.h"
 #include "msg-type.h"
 #include "bootstrap.h"
 #include "discovery.h"
-#include "nfl-block.h"
+//#include "nfl-block.h"
 #define ENABLE_DEBUG 1
 #include <debug.h>
 #include <thread.h>
