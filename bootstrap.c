@@ -407,6 +407,11 @@ s = 4^3 mod 23 = 18
     shared[1] = Montgomery(bit_2[1], secrete_1[1], dh_p);
     shared[2] = Montgomery(bit_2[2], secrete_1[2], dh_p);
     shared[3] = Montgomery(bit_2[3], secrete_1[3], dh_p);
+    
+    DPRINT("%"PRIu64" ", shared[0]);
+    DPRINT("%"PRIu64" ", shared[1]);
+    DPRINT("%"PRIu64" ", shared[2]);
+    DPRINT("%"PRIu64" ", shared[3]);
 
     //skip 32 bytes of public key's hash (plus 2 types header)
     buf += 34;
