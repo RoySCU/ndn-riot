@@ -333,7 +333,6 @@ static int query_timeout(ndn_block_t* interest)
 
 void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple)
 {
-    (void)ptr;
     if(bootstrapTuple == NULL){
         DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): no bootstrapTuple available\n",
                thread_getpid());
