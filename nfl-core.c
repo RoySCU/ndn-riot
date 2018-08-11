@@ -72,12 +72,13 @@ static int _start_bootstrap(void* ptr)
 static int _start_discovery(void* ptr)
 {
     //ptr pointed to a struct may laterly defined 
-    
+    (void)ptr;
     //assign value
     msg_t send, reply;
     reply.content.ptr = NULL;
     nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
-                            THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, ndn_discovery, ptr, "nfl-discovery");
+                            THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, ndn_discovery, bootstrapTuple,
+                             "nfl-discovery");
     //this thread directly registerd on ndn core thread as a application
     send.content.ptr = reply.content.ptr;
 
