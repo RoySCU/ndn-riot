@@ -58,7 +58,6 @@ static uint32_t begin;
 static ndn_block_t anchor_global;
 static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
-//static ndn_block_t com_cert;
 static nfl_bootstrap_tuple_t tuple;
 
 static uint64_t dh_p = 10000831;
@@ -68,31 +67,12 @@ static uint64_t bit_1[4];
 static uint64_t bit_2[4];
 static uint64_t shared[4];
 
-/* this is secp256r1 key, now we use secp160r1
-static uint8_t ecc_key_pri[] = {             
-     0x38, 0x67, 0x54, 0x73, 0x8B, 0x72, 0x4C, 0xD6,
-     0x3E, 0xBD, 0x52, 0xF3, 0x64, 0xD8, 0xF5, 0x7F,
-     0xB5, 0xE6, 0xF2, 0x9F, 0xC2, 0x7B, 0xD6, 0x90,
-     0x42, 0x9D, 0xC8, 0xCE, 0xF0, 0xDE, 0x75, 0xB3
- };
-
-static uint8_t ecc_key_pub[] = {
-    0x2C, 0x3C, 0x18, 0xCB, 0x31, 0x88, 0x0B, 0xC3,
-    0x73, 0xF4, 0x4A, 0xD4, 0x3F, 0x8C, 0x80, 0x24,
-    0xD4, 0x8E, 0xBE, 0xB4, 0xAD, 0xF0, 0x69, 0xA6,
-    0xFE, 0x29, 0x12, 0xAC, 0xC1, 0xE1, 0x26, 0x7E,
-    0x2B, 0x25, 0x69, 0x02, 0xD5, 0x85, 0x51, 0x4B,
-    0x91, 0xAC, 0xB9, 0xD1, 0x19, 0xE9, 0x5E, 0x97,
-    0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11,
-    0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
-};
-
 static uint8_t com_key_pri[] = {
     0x00, 0x79, 0xD8, 0x8A, 0x5E, 0x4A, 0xF3, 0x2D,
     0x36, 0x03, 0x89, 0xC7, 0x92, 0x3B, 0x2E, 0x50, 
     0x7C, 0xF7, 0x6E, 0x60, 0xB0, 0xAF, 0x26, 0xE4,
     0x42, 0x9D, 0xC8, 0xCE, 0xF0, 0xDE, 0x75, 0xB3 
-};*/
+};
 
 static uint8_t com_key_pub[] = {
     0xB2, 0xFC, 0x62, 0x14, 0x78, 0xDC, 0x10, 0xEA, 
@@ -279,7 +259,7 @@ static int ndn_app_express_certificate_request(void)
     buf_di = NULL;
     ndn_shared_block_release(sn1_cert);
 
-    /*ndn_block_t keybuffer = {com_key_pub, sizeof(com_key_pub)};
+    ndn_block_t keybuffer = {com_key_pub, sizeof(com_key_pub)};
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
     ndn_shared_block_t* signed_com =
         ndn_data_create(&sn4_cert->block, &meta, &keybuffer,
@@ -291,10 +271,7 @@ static int ndn_app_express_certificate_request(void)
         ndn_shared_block_release(sn4_cert);
         return NDN_APP_ERROR;
     }
-
-    com_cert = signed_com->block;*/
-
-    ndn_shared_block_t* sn5_cert = ndn_name_append(&sn2_cert->block, com_key_pub, sizeof(com_key_pub)); 
+    ndn_shared_block_t* sn5_cert = ndn_name_append(&sn2_cert->block, signed_com->block.buf, signed_com->block.len); 
     ndn_shared_block_release(sn2_cert);
  
     /* make the signature of token */
@@ -329,16 +306,14 @@ static int ndn_app_express_certificate_request(void)
 
     //append the signatureinfo
     ndn_shared_block_t* sn9_cert = ndn_name_append(&sn8_cert->block, buf_sinfo1, 5); 
-    free((void*)buf_sinfo1);
-    buf_sinfo1 = NULL;
+    free(buf_sinfo1);
     ndn_shared_block_release(sn8_cert);
 
     /* append the signature by shared secret derived HMAC */
     uint8_t* buf_bk = (uint8_t*)malloc(34); //32 bytes reserved from the value, 2 bytes for header 
     ndn_make_hmac_signature((uint8_t*)shared, &sn9_cert->block, buf_bk);
     ndn_shared_block_t* sn10_cert = ndn_name_append(&sn9_cert->block, buf_bk, 34);   
-    free((void*)buf_bk);
-    buf_bk = NULL;
+    free(buf_bk);
     ndn_shared_block_release(sn9_cert);
 
     DPRINT("nfl-bootstrap: express Certificate Request, name=");
@@ -346,11 +321,12 @@ static int ndn_app_express_certificate_request(void)
     putchar('\n');
 
     begin = xtimer_now_usec();
-    uint32_t lifetime = 3000;  // 1 sec
+    uint32_t lifetime = 3000; 
     int r = ndn_app_express_interest(handle, &sn10_cert->block, NULL, lifetime,
                                      on_certificate_response, 
                                      certificate_timeout); 
     ndn_shared_block_release(sn10_cert);
+    ndn_shared_block_release(sn4_cert);
     if (r != 0) {
         DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid "): failed to express interest\n",
                handle->id);
@@ -386,14 +362,6 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     assert(r == 0);
 
     uint32_t len; 
-    //l = ndn_block_get_var_number(data->buf + 1, data->len - 1, &len);
-    //DPRINT("Data L: %u\n", len);
-
-    //ndn_block_get_var_number(data->buf + 1 + l + 1, data->len - 1 - l - 1, &len);
-    //DPRINT("Name L: %u\n", len);
-    //DPRINT("Name block length from function: %d\n", name.len);
-
-
     const uint8_t* buf = content.buf;  //receive the pointer from the content type
     len = content.len; //receive the content length
     //DPRINT("content TLV length: %u\n", len);

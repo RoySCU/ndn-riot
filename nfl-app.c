@@ -40,3 +40,26 @@ int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple)
     tuple = reply.content.ptr;
     return true;
 }
+
+int nfl_start_discovery(void)
+{
+    msg_t msg, reply;
+    msg.type = NFL_START_DISCOVERY;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+    DEBUG("NFL: Service Discovery request processed from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+    return true;
+}
+
+int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple)
+{
+    msg_t msg, reply;
+    msg.type = NFL_EXTRACT_DISCOVERY_TUPLE;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+    DEBUG("NFL: discovery tuple extraction request processed from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+    tuple = reply.content.ptr;
+    return true;
+}

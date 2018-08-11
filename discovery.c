@@ -332,9 +332,17 @@ static int query_timeout(ndn_block_t* interest)
     return NDN_APP_CONTINUE; 
 }
 
-void *ndn_discovery(void *ptr)
+void *ndn_discovery(nfl_bootstrap_tuple_t* bootstrapTuple)
 {
     (void)ptr;
+    if(bootstrapTuple == NULL){
+        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): no bootstrapTuple available\n",
+               thread_getpid());
+    }
+
+    //install home prefix from bootstrapTuple
+    home_prefix.buf = bootstrapTuple->home_prefix->buf;
+    home_prefix.len = bootstrapTuple->home_prefix->len;
 
     msg_t msg, reply;
 
@@ -348,9 +356,8 @@ void *ndn_discovery(void *ptr)
     /*
         Controller: Interest->/<home prefix>/<valid host name>/service/<CK signature>
     */
-    nfl_extract_bootstrap_tuple(&tuple);
     ndn_block_t r;
-    ndn_data_get_name(tuple.m_cert, &r);
+    ndn_data_get_name(bootstrapTuple->m_cert, &r);
 
     const char* uri_req = "/service"; 
     ndn_shared_block_t* sn_req = ndn_name_from_uri(uri_req, strlen(uri_req));
@@ -383,7 +390,8 @@ void *ndn_discovery(void *ptr)
     while(1){
     msg_receive(&msg);
     DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): ipc request got\n", handle->id);
-    reply.content.ptr = &served_prefixes;
+    nfl_discovery_tuple_t tuple = { &served_prefixes, 3};
+    reply.content.ptr = &tuple;
     msg_reply(&msg, &reply);
     DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): ipc loop quit\n", handle->id);
     break; 

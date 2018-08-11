@@ -23,6 +23,10 @@ int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32]);
 //caller must contain the memeory of tuple
 int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple);
 
+int nfl_start_discovery(void);
+
+//caller must contain the memeory of tuple
+int nfl_extract_discovery_tuple(nfl_discovery_tuple_t* tuple);
 
 
 #ifdef __cplusplus

@@ -6,7 +6,7 @@ extern "C" {
 
 #define NFL_START_BOOTSTRAP  (0x0300)
 
-#define NFL_START_SELF_LEARNING    (0x0301)
+#define NFL_START_DISCOVERY    (0x0301)
 
 #define NFL_EXTRACT_BOOTSTRAP_TUPLE    (0x0302)
 

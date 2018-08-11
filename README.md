@@ -12,3 +12,6 @@ Issues:
 5. by now we do pass the key pair into bootstrap function, but we void the ptr in bootstrap.c (so we use the hard code       key pair actually)
 6. perhaps we don't need a init() for every services? (already removed)
 7. Does four to five seconds of bootstrapping OK? (lixia said bootstrap only execute once, she's ok with that)
+
+Notice:
+Under this branch, we'll append the whole communication certificate into interest name, whereas only a plain CKpub text in master branch.

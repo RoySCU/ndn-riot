@@ -22,6 +22,11 @@ typedef struct nfl_bootstrap_tuple {
     ndn_block_t* home_prefix;        
 } nfl_bootstrap_tuple_t;
 
+typedef struct nfl_discovery_tuple {
+    ndn_block_t* prefix;     
+    int num;      
+} nfl_discovery_tuple_t;
+
 #ifdef __cplusplus
 }
 #endif
