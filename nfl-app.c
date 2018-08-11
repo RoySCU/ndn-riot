@@ -54,7 +54,6 @@ int nfl_start_discovery(void)
 
 int nfl_extract_discovery_tuple(nfl_bootstrap_tuple_t* tuple)
 {
-    (void)tuple;
     msg_t msg, reply;
     msg.type = NFL_EXTRACT_DISCOVERY_TUPLE;
     msg.content.ptr = NULL;
