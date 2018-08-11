@@ -255,9 +255,17 @@ static int ndn_app_express_certificate_request(void)
     uint8_t* buf_di = (uint8_t*)malloc(32);  //32 bytes reserved for hash
     sha256(ecc_key_pub, sizeof(ecc_key_pub), buf_di);                       
     ndn_shared_block_t* sn2_cert = ndn_name_append(&sn1_cert->block, buf_di, 32);   
-    free((void*)buf_di);
+    free(buf_di);
     buf_di = NULL;
     ndn_shared_block_release(sn1_cert);
+
+    /* apppend the device name */  
+    const char* uri1_cert = "/TY-samr21-xpro";  //info from device itself
+    ndn_shared_block_t* sn3_cert = ndn_name_from_uri(uri1_cert, strlen(uri1_cert));
+    //move the pointer by 4 bytes: 2 bytes for name header, 2 bytes for component header
+    ndn_shared_block_t* sn4_cert = ndn_name_append(&home_prefix,
+                                   (&sn3_cert->block)->buf + 4, (&sn3_cert->block)->len - 4);
+    ndn_shared_block_release(sn3_cert);
 
     ndn_block_t keybuffer = {com_key_pub, sizeof(com_key_pub)};
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
