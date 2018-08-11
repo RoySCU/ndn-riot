@@ -52,7 +52,7 @@ int nfl_start_discovery(void)
     return true;
 }
 
-int nfl_extract_discovery_tuple(nfl_bootstrap_tuple_t* tuple)
+int nfl_extract_discovery_tuple(nfl_discovery_tuple_t* tuple)
 {
     msg_t msg, reply;
     msg.type = NFL_EXTRACT_DISCOVERY_TUPLE;
