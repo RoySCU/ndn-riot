@@ -34,7 +34,7 @@ static char _stack[NFL_STACK_SIZE];
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
 kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
-char bootstrap_stack[THREAD_STACKSIZE_MAIN];
+char bootstrap_stack[2*THREAD_STACKSIZE_MAIN];
 kernel_pid_t nfl_discovery_pid = KERNEL_PID_UNDEF;
 char discovery_stack[THREAD_STACKSIZE_MAIN];
 
