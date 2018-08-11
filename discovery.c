@@ -50,7 +50,6 @@ static void _finish_sha256(const uECC_HashContext *base, uint8_t *hash_result)
 
 static ndn_app_t* handle = NULL;
 
-static nfl_bootstrap_tuple_t tuple;
 static ndn_block_t home_prefix;
 static ndn_block_t served_prefixes;
 
