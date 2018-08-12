@@ -271,6 +271,9 @@ int ndn_name_compare_block(ndn_block_t* lhs, ndn_block_t* rhs);
  */
 void ndn_name_print(ndn_block_t* block);
 
+
+void ndn_name_append_from_name(ndn_block_t* block, ndn_block_t* block_new);
+
 #ifdef __cplusplus
 }
 #endif
