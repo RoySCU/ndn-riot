@@ -3,6 +3,8 @@
 #include "encoding/block.h"
 #include "nfl-constant.h"
 #include "nfl-block.h"
+#include "discovery.h"
+
 /*
     this function is used for ndn-riot app send ipc message to NFL, to start bootstrap 
 */

@@ -46,8 +46,9 @@ int nfl_start_discovery(void)
     return true;
 }
 
-int nfl_set_discovery_prefix(const char* ptr)
-{
+int nfl_set_discovery_prefix(void* ptr)
+{  
+    //ptr should indicate a uri
     msg_t msg, reply;
     msg.type = NFL_SET_DISCOVERY_PREFIX;
     msg.content.ptr = ptr;
