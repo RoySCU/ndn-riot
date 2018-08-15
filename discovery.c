@@ -458,12 +458,12 @@ static int on_broadcast(ndn_block_t* interest)
     return NDN_APP_CONTINUE;
 }
 
-void *nfl_discovery(void* bootstrapTuple);
+void *nfl_discovery(void* bootstrapTuple)
 {
     /* extract home prefix and identity name from bootstrapTuple */
-    home_prefix = bootstrapTuple->home_prefix;
+    home_prefix = *(bootstrapTuple->home_prefix);
 
-    /* extrace identity name from m_cert */
+    ndn_data_get_name(bootstrapTuple->m_cert, host_name);
 
 
     /* initiate parameters */
