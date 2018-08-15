@@ -27,13 +27,13 @@ int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple);
 
 int nfl_start_discovery(void);
 
-int nfl_set_discovery_prefix(const char* ptr);
+int nfl_set_discovery_prefix(void* ptr);
 
 int nfl_init_discovery(void);
 
 int nfl_start_discovery_query(nfl_discovery_tuple_t* tuple);
 
-nfl_identity_entry_t* nfl_extract_discovery_tuple(void);
+nfl_identity_entry_t* nfl_extract_discovery_list(void);
 
 
 #ifdef __cplusplus

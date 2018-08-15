@@ -77,10 +77,10 @@ int nfl_start_discovery_query(nfl_discovery_tuple_t* tuple)
     return true;
 }
 
-nfl_identity_entry_t* nfl_extract_discovery_tuple(void)
+nfl_identity_entry_t* nfl_extract_discovery_list(void)
 {
     msg_t msg, reply;
-    msg.type = NFL_EXTRACT_DISCOVERY_TUPLE;
+    msg.type = NFL_EXTRACT_DISCOVERY_LIST;
     msg.content.ptr = NULL;
     msg_send_receive(&msg, &reply, nfl_pid); 
 
