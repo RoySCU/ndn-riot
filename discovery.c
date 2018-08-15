@@ -551,11 +551,11 @@ void *nfl_discovery(void* bootstrapTuple)
 
                 /* msg should contain a <id, service> tuple */
                 lifetime = 2000; // 2 seconds
-                nfl_identity_entry_t* table = msg.content.ptr;                    
+                nfl_discovery_tuple_t* tuple = msg.content.ptr;                    
                 ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
-                                             table->identity);
+                                             tuple->identity);
                 toquery = ndn_name_append_from_name(&toquery->block,
-                                             table->service);
+                                             tuple->service);
                 const char* query = "/query";
                 ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
                 toquery = ndn_name_append_from_name(&toquery->block, &str->block);
