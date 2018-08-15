@@ -464,7 +464,7 @@ void *nfl_discovery(void* bootstrapTuple)
     /* extract home prefix and identity name from bootstrapTuple */
     home_prefix = *(bootstrapTuple.home_prefix);
 
-    ndn_data_get_name(bootstrapTuple.m_cert, host_name);
+    ndn_data_get_name(bootstrapTuple.m_cert, &host_name);
 
 
     /* initiate parameters */
