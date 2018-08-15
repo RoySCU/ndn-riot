@@ -462,7 +462,7 @@ static int on_broadcast(ndn_block_t* interest)
 void *nfl_discovery(void* bootstrapTuple)
 {
     /* extract home prefix and identity name from bootstrapTuple */
-    bootstrapTuple tuple = bootstrapTuple;
+    nfl_bootstrap_tuple_t* tuple = bootstrapTuple;
 
     home_prefix = *tuple.home_prefix;
 
@@ -550,11 +550,12 @@ void *nfl_discovery(void* bootstrapTuple)
                         thread_getpid());
 
                 /* msg should contain a <id, service> tuple */
-                lifetime = 2000; // 2 seconds                    
+                lifetime = 2000; // 2 seconds
+                nfl_identity_entry_t* table = msg.content.ptr;                    
                 ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
-                                             msg.content.ptr->identity);
+                                             table->identity);
                 toquery = ndn_name_append_from_name(&toquery->block,
-                                             msg.content.ptr->service);
+                                             table->service);
                 const char* query = "/query";
                 ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
                 toquery = ndn_name_append_from_name(&toquery->block, &str->block);
