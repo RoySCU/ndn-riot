@@ -20,6 +20,7 @@
 #include "discovery.h"
 
 #define DPRINT(...) printf(__VA_ARGS__)
+#define _MSG_QUEUE_SIZE    (8U)
 
 static ndn_app_t* handle = NULL;
 
@@ -461,9 +462,9 @@ static int on_broadcast(ndn_block_t* interest)
 void *nfl_discovery(void* bootstrapTuple)
 {
     /* extract home prefix and identity name from bootstrapTuple */
-    home_prefix = *(bootstrapTuple->home_prefix);
+    home_prefix = *(bootstrapTuple.home_prefix);
 
-    ndn_data_get_name(bootstrapTuple->m_cert, host_name);
+    ndn_data_get_name(bootstrapTuple.m_cert, host_name);
 
 
     /* initiate parameters */
@@ -471,7 +472,7 @@ void *nfl_discovery(void* bootstrapTuple)
     if (handle == NULL) {
         DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): cannot create app handle\n",
                thread_getpid());
-        return;
+        return NULL;
     }
 
     nfl_discovery_subprefix_table_init();
@@ -480,8 +481,8 @@ void *nfl_discovery(void* bootstrapTuple)
     DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): init\n", thread_getpid());
 
     /* discovery event loop */
-    msg_t msg, reply, msg_q[NFL_MSG_QUEUE_SIZE];
-    msg_init_queue(msg_q, NFL_MSG_QUEUE_SIZE);
+    msg_t msg, reply, msg_q[_MSG_QUEUE_SIZE];
+    msg_init_queue(msg_q, _MSG_QUEUE_SIZE);
 
     //TODO: initialize the NFL here
 
@@ -547,7 +548,7 @@ void *nfl_discovery(void* bootstrapTuple)
                         thread_getpid());
 
                 /* msg should contain a <id, service> tuple */
-                uint32_t lifetime = 2000; // 2 seconds                    
+                lifetime = 2000; // 2 seconds                    
                 ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
                                              msg.content.ptr->identity);
                 toquery = ndn_name_append_from_name(&toquery->block,
