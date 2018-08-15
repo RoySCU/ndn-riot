@@ -462,9 +462,11 @@ static int on_broadcast(ndn_block_t* interest)
 void *nfl_discovery(void* bootstrapTuple)
 {
     /* extract home prefix and identity name from bootstrapTuple */
-    home_prefix = *(bootstrapTuple.home_prefix);
+    bootstrapTuple tuple = bootstrapTuple;
 
-    ndn_data_get_name(bootstrapTuple.m_cert, &host_name);
+    home_prefix = *tuple.home_prefix;
+
+    ndn_data_get_name(tuple.m_cert, &host_name);
 
 
     /* initiate parameters */
@@ -573,4 +575,3 @@ void *nfl_discovery(void* bootstrapTuple)
     return NULL;
 }
 
-}
