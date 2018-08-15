@@ -10,68 +10,18 @@
 #include "encoding/name.h"
 #include "encoding/interest.h"
 #include "nfl-constant.h"
+#include "nfl-core.h"
 #include "encoding/data.h"
 #include "msg-type.h"
 #include "crypto/ciphers.h"
 #include "uECC.h"
 #include <string.h>
 #include "nfl-block.h"
-#include "nfl-app.h"
 #include "discovery.h"
-
-#ifndef FEATURE_PERIPH_HWRNG
-typedef struct uECC_SHA256_HashContext {
-    uECC_HashContext uECC;
-    sha256_context_t ctx;
-} uECC_SHA256_HashContext;
-static void _init_sha256(const uECC_HashContext *base)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_init(&context->ctx);
-}
-
-static void _update_sha256(const uECC_HashContext *base,
-                           const uint8_t *message,
-                           unsigned message_size)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_update(&context->ctx, message, message_size);
-}
-
-static void _finish_sha256(const uECC_HashContext *base, uint8_t *hash_result)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_final(&context->ctx, hash_result);
-}
-#endif
-
 
 #define DPRINT(...) printf(__VA_ARGS__)
 
 static ndn_app_t* handle = NULL;
-
-static ndn_block_t home_prefix;
-static ndn_block_t served_prefixes;
-
-static uint8_t com_key_pri[] = {
-    0x00, 0x79, 0xD8, 0x8A, 0x5E, 0x4A, 0xF3, 0x2D,
-    0x36, 0x03, 0x89, 0xC7, 0x92, 0x3B, 0x2E, 0x50, 
-    0x7C, 0xF7, 0x6E, 0x60, 0xB0, 0xAF, 0x26, 0xE4,
-    0x42, 0x9D, 0xC8, 0xCE, 0xF0, 0xDE, 0x75, 0xB3 
-};
-
-/*
-static uint8_t com_key_pub[] = {
-    0xB2, 0xFC, 0x62, 0x14, 0x78, 0xDC, 0x10, 0xEA, 
-    0x61, 0x42, 0xB9, 0x34, 0x67, 0xE6, 0xDD, 0xE3,
-    0x3D, 0x35, 0xAA, 0x5B, 0xA4, 0x24, 0x6C, 0xD4, 
-    0xB4, 0xED, 0xD8, 0xA4, 0x59, 0xA7, 0x32, 0x12,
-    0x57, 0x37, 0x90, 0x5D, 0xED, 0x37, 0xC8, 0xE8,
-    0x6A, 0x81, 0xE5, 0x8F, 0xBE, 0x6B, 0xD3, 0x27,
-    0x20, 0xBB, 0x16, 0x2A, 0xD3, 0x2F, 0xB5, 0x11, 
-    0x1B, 0xD1, 0xAF, 0x76, 0xDB, 0xAD, 0xB8, 0xCE
-}; // this is secp160r1 key
-
 
 static uint8_t ecc_key_pri[] = {
     0x00, 0x79, 0xD8, 0x8A, 0x5E, 0x4A, 0xF3, 0x2D,
@@ -80,6 +30,7 @@ static uint8_t ecc_key_pri[] = {
     0x42, 0x9D, 0xC8, 0xCE, 0xF0, 0xDE, 0x75, 0xB3 
 };
 
+/*
 static uint8_t ecc_key_pub[] = {
     0xB2, 0xFC, 0x62, 0x14, 0x78, 0xDC, 0x10, 0xEA, 
     0x61, 0x42, 0xB9, 0x34, 0x67, 0xE6, 0xDD, 0xE3,
@@ -92,147 +43,350 @@ static uint8_t ecc_key_pub[] = {
 }; // this is secp160r1 key*/
 
 
-//segment for signature and buffer_signature to write, returning the pointer to the buffer
-//this function will automatically skip the NAME header, so just pass the whole NAME TLV 
-static int ndn_make_signature(uint8_t pri_key[32], ndn_block_t* seg, uint8_t* buf_sig)
+static ndn_block_t home_prefix;
+static ndn_block_t host_name;
+static ndn_block_t to_nfl;
+
+void nfl_discovery_service_table_init(void)
 {
-    uint32_t num;
-    buf_sig[0] = NDN_TLV_SIGNATURE_VALUE;
-    ndn_block_put_var_number(64, buf_sig + 1, 66 -1);
-    int gl = ndn_block_get_var_number(seg->buf + 1, seg->len - 1, &num);
-    uint8_t h[32] = {0}; 
-
-    sha256(seg->buf + 1 + gl, seg->len - 1 - gl, h);
-    uECC_Curve curve = uECC_secp160r1();
-
-#ifndef FEATURE_PERIPH_HWRNG
-    // allocate memory on heap to avoid stack overflow
-    uint8_t *tmp = (uint8_t*)malloc(32 + 32 + 64);
-    if (tmp == NULL) {
-        DPRINT("nfl-bootstrap: Error during signing interest\n");
-        return -1;
+    for (int i = 0; i < NFL_SERVICE_ENTRIES_NUMOF; ++i) {
+        ndn_block_t init = {NULL, 0};
+        _service_table[i].ser = init;
+        _service_table[i].next = NULL;
     }
-
-    uECC_SHA256_HashContext *ctx = (uECC_SHA256_HashContext*)
-                malloc(sizeof(uECC_SHA256_HashContext));
-    if (ctx == NULL) {
-        free(tmp);
-        DPRINT("nfl-bootstrap: Error during signing interest\n");
-        return -1;
-    }
-       
-    ctx->uECC.init_hash = &_init_sha256;
-    ctx->uECC.update_hash = &_update_sha256;
-    ctx->uECC.finish_hash = &_finish_sha256;
-    ctx->uECC.block_size = 64;
-    ctx->uECC.result_size = 32;
-    ctx->uECC.tmp = tmp;
-    int res = uECC_sign_deterministic(pri_key, h, sizeof(h), &ctx->uECC,
-                                              buf_sig + 1 + gl, curve); 
-    free(ctx);
-    free(tmp);
-    if (res == 0) {
-        DPRINT("nfl-bootstrap: Error during signing interest\n");
-        return -1;
-    }
-#else
-    res = uECC_sign(pri_key, h, sizeof(h), buf_sig + 1 + gl, curve);
-    if (res == 0) {
-        return -1;
-    }  
-    return 0; //success
-#endif
-    return 0; //success
 }
 
-static int query_timeout(ndn_block_t* interest);
-
-static int on_query_response(ndn_block_t* interest, ndn_block_t* data)
+void nfl_discovery_subprefix_table_init(void)
 {
-    /*
-        Controller: Data -> 
-        /<home prefix>/service/<CK signature>/<version>
-        All served prefixes about <service name> in Name TLV
-        (e.g, /ucla/temperature/397/desk01) 
-        CK signature
-    */
-    (void)interest;
-    ndn_block_t name;
-
-    int r = ndn_data_get_name(data, &name); 
-    assert(r == 0);
-    DPRINT("query response received, name=");
-    ndn_name_print(&name);
-    putchar('\n');
-
-    r = ndn_data_verify_signature(data, com_key_pri, sizeof(com_key_pri)); 
-    if (r != 0)
-        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): fail to verify query response\n",
-               handle->id);
-    else{ 
-        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): query response valid\n",
-               handle->id);
-
-    /* install the served prefixes */
-    ndn_block_t content;
-    r = ndn_data_get_content(data, &content);
-    assert(r == 0);        
-    //skip the content header and install served prefixes
-    served_prefixes.buf = content.buf + 2;
-    served_prefixes.len = content.len - 2;
-   
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): served prefixes block installed, length = %d\n",
-               handle->id,  served_prefixes.len);
+    for (int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF; ++i) {
+        ndn_block_t init = {NULL, 0};
+        _subprefix_table[i].sub = init;
+        _subprefix_table[i].next = NULL;
     }
-    return NDN_APP_STOP;  // block forever...
 }
 
-static int ndn_app_express_discovery_query(void) 
+void nfl_discovery_identity_table_init(void)
 {
-  // Device: Interest->/<home prefix>/service/<CK signature>
+    for (int i = 0; i < NFL_IDENTITY_ENTRIES_NUMOF; ++i) {
+        ndn_block_t init = {NULL, 0};
+        _identity_table[i].id = init;
+        _identity_table[i].next = NULL;
+        
+        /* initialize the avaiable table */
+        for (int j = 0; j < NFL_AVAILABLE_ENTRIES_NUMOF; ++j) {
+            _identity_table[i].list[j].avail = init;
+            _identity_table[i].list[j].next = NULL;
+        }
+    }
+}
+
+static int nfl_discovery_collect(ndn_block_t* interest){
+
+    /* skip home prefix and "servicediscovery" */
+    int inter_len = ndn_name_get_size_from_block(interest);
+    int home_len = ndn_name_get_size_from_block(&home_prefix);// home prefix should be name TLV
+    int num = inter_len - home_len - 3; // number of available services
+
+    ndn_block_t identity;
+    ndn_name_get_component_from_block(interest, home_len + 1, &identity);
+
+    /* check the identity table, first we need construct id a name TLV */
+    uint8_t* holder = (uint8_t*)malloc(identity.len + 4);
+    holder[0] = NDN_TLV_NAME;
+    ndn_block_put_var_number(identity.len + 2, holder + 1, identity.len + 4 - 1);
+    holder[2] = NDN_TLV_NAME_COMPONENT;
+    ndn_block_put_var_number(identity.len, holder + 3, identity.len + 4 - 3);
+    memcpy(holder + 4, identity.buf, identity.len);
+    ndn_block_t identity_name = { holder, identity.len + 4 };
+
+    /* compare the name TLV encoded identity to id table */
+    nfl_identity_entry_t* entry = NULL;
+    for (int j = 0; j < NFL_IDENTITY_ENTRIES_NUMOF/* && (_identity_table[j].id.buf)*/; ++j) {   
+        int r = ndn_name_compare_block(&_identity_table[j].id, &identity_name);     
+        if (r == 0) {
+            free(holder);//already collected this identity, free the candidate block
+            
+            /* to recollect services */
+            ndn_block_t init = {NULL, 0};
+            for (int k = 0; k < NFL_AVAILABLE_ENTRIES_NUMOF; ++k) {
+                _identity_table[j].list[k].avail = init;
+                _identity_table[j].list[k].next = NULL;
+            }
+
+            for (int i = 0; i < num; ++i){ //within the service list
+                ndn_block_t toadd;
+                ndn_name_get_component_from_block(interest, home_len + 3 + i, &toadd);
+
+                /* construct it in name TLV */
+                uint8_t* hold = (uint8_t*)malloc(toadd.len + 4);
+                hold[0] = NDN_TLV_NAME;
+                ndn_block_put_var_number(toadd.len + 2, hold + 1, toadd.len + 4 - 1);
+                hold[2] = NDN_TLV_NAME_COMPONENT;
+                ndn_block_put_var_number(toadd.len, hold + 3, toadd.len + 4 - 3);
+                memcpy(hold + 4, toadd.buf, toadd.len);
+                ndn_block_t toadd_name = { hold, toadd.len + 4 };
+
+                /* services in servicelist are unique, no need to check */
+                _identity_table[j].list[i].prev = _identity_table[j].list[i].next = NULL;
+                _identity_table[j].list[i].avail = toadd_name;
+
+            }
+            break;
+        }
+
+        if ((!entry) && (_identity_table[j].id.buf == NULL)) {
+            entry = &_identity_table[j];
+        }   
+    }
 
 
-    /* append the "service" */
-    const char* uri_query = "/service"; 
-    ndn_shared_block_t* sn_query = ndn_name_from_uri(uri_query, strlen(uri_query));
-    //move the pointer by 4 bytes: 2 bytes for name header, 2 bytes for component header
-    ndn_shared_block_t* sn1_query = ndn_name_append(&home_prefix,
-                                 (&sn_query->block)->buf + 4, (&sn_query->block)->len - 4);
+    if (entry != NULL){ 
+        /* add identity */
+        entry->prev = entry->next = NULL;
+        entry->id = identity_name;
 
-    ndn_shared_block_release(sn_query);
+        /* add services */
+        for (int i = 0; i < num; ++i){ //within the service list
+            ndn_block_t toadd;
+            ndn_name_get_component_from_block(interest, home_len + 3 + i, &toadd);
 
-    //now we have signinfo but carrying no keylocator
-    // Write signature info header 
-    uint8_t* buf_sinfo = (uint8_t*)malloc(5); 
-    buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
-    buf_sinfo[1] = 3;
+            /* construct it in name TLV */
+            uint8_t* hold = (uint8_t*)malloc(toadd.len + 4);
+            hold[0] = NDN_TLV_NAME;
+            ndn_block_put_var_number(toadd.len + 2, hold + 1, toadd.len + 4 - 1);
+            hold[2] = NDN_TLV_NAME_COMPONENT;
+            ndn_block_put_var_number(toadd.len, hold + 3, toadd.len + 4 - 3);
+            memcpy(hold + 4, toadd.buf, toadd.len);
+            ndn_block_t toadd_name = { hold, toadd.len + 4 };
 
-    // Write signature type (true signatureinfo content)
-    buf_sinfo[2] = NDN_TLV_SIGNATURE_TYPE;
-    buf_sinfo[3] = 1;
-    buf_sinfo[4] = NDN_SIG_TYPE_ECDSA_SHA256;
+            /* services in servicelist are unique, no need to check */
+            entry->list[i].prev = entry->list[i].next = NULL;
+            entry->list[i].avail = toadd_name;
 
-    //append the signatureinfo
-    ndn_shared_block_t* sn2_query = ndn_name_append(&sn1_query->block, buf_sinfo, 5); 
-    ndn_shared_block_release(sn1_query);
+        }
+    }
+    
+    return 0;
+}
 
-    /* append the signature by CK */
-    uint8_t buf_ck[66]; //64 bytes reserved from the value, 2 bytes for header 
-    ndn_make_signature(com_key_pri, &sn2_query->block, buf_ck);
-    ndn_shared_block_t* sn3_query = ndn_name_append(&sn2_query->block, buf_ck, 66);   
-    ndn_shared_block_release(sn2_query);
 
-    DPRINT("nfl-discovery: express Service Discovery Query, name=");
-    ndn_name_print(&sn3_query->block);
+static int nfl_discovery_add_subprefix(const char* sub)
+
+{
+    nfl_subprefix_entry_t* entry = NULL;
+    
+    ndn_shared_block_t* sn = ndn_name_from_uri(sub, strlen(sub));
+
+    for (int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF; ++i) {
+        int r = ndn_name_compare_block(&_subprefix_table[i].sub, &sn->block);
+        if (r == 0) {
+            DPRINT("nfl-discovery: subprefix entry already exists\n");
+            return -1;
+        }
+
+        if ((!entry) && (_subprefix_table[i].sub.buf == NULL)) {
+            entry = &_subprefix_table[i];
+        }
+    }
+
+    if (!entry) {
+        DPRINT("nfl-discovery: cannot allocate subprefix entry\n");
+        return -1;
+    }
+
+    entry->prev = entry->next = NULL;
+    entry->sub = sn->block;
+
+    return 0;
+}
+
+static int nfl_discovery_make_service_list(void){
+    
+    ndn_block_t comp;
+    /* extract the first part */
+
+    for (int i = 0; _subprefix_table[i].sub.buf != NULL; ++i) {
+
+        nfl_service_entry_t* entry = NULL;
+        ndn_name_get_component_from_block(&_subprefix_table[i].sub, 0, &comp);
+
+        /* construct a name */
+        uint8_t* holder = (uint8_t*)malloc(comp.len + 4);
+        holder[0] = NDN_TLV_NAME;
+        ndn_block_put_var_number(comp.len + 2, holder + 1, comp.len + 4 - 1);
+        holder[2] = NDN_TLV_NAME_COMPONENT;
+        ndn_block_put_var_number(comp.len, holder + 3, comp.len + 4 - 3);
+        memcpy(holder + 4, comp.buf, comp.len);
+        ndn_block_t comp_name = { holder, comp.len + 4 };
+
+        for (int j = 0; j < NFL_SERVICE_ENTRIES_NUMOF; ++j) {
+
+            int r = ndn_name_compare_block(&_service_table[j].ser, &comp_name);     
+            if (r == 0) {
+                free(holder);
+                break;
+            }
+
+            if ((!entry) && (_service_table[j].ser.buf == NULL)) {
+                entry = &_service_table[j];
+                break;
+            }
+        }
+
+        if (!entry) continue;
+        else{
+            entry->prev = entry->next = NULL;
+            entry->ser = comp_name;
+        }
+  
+    }
+
+    return 0;
+}
+            
+
+/* how about we assume less than 10 services ? */
+/* but we must use linked list to store the subprefix */
+static int nfl_discovery_service_check(ndn_block_t* tocheck){
+    
+    int r = 1; 
+    for (int i = 0; i < NFL_SERVICE_ENTRIES_NUMOF && _service_table[i].ser.buf; ++i) {
+        r = ndn_name_compare_block(&_service_table[i].ser, tocheck);     
+        if (r == 0) {
+            DPRINT("nfl-discovery: find proper service name\n");
+            return 0;// success
+        }
+    }
+    
+    DPRINT("nfl-discovery: no such service name\n");
+    return -1;
+}
+
+/* please pass the service block in name TLV */
+
+static int nfl_discovery_service_extract(ndn_block_t* service, ndn_block_t ptr[]){
+    
+    int r = nfl_discovery_service_check(service);
+    if (r != 0) return -1;
+ 
+    /* now we do have such service */
+    for (int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && _subprefix_table[i].sub.buf; ++i) {
+        
+        /* extract the first component to check */
+        ndn_block_t first;
+        ndn_name_get_component_from_block(&_subprefix_table[i].sub, 0, &first);
+
+        /* construct the first component as name TLV */
+        uint8_t* holder = (uint8_t*)malloc(first.len + 4);
+        holder[0] = NDN_TLV_NAME;
+        ndn_block_put_var_number(first.len + 2, holder + 1, first.len + 4 - 1);
+        holder[2] = NDN_TLV_NAME_COMPONENT;
+        ndn_block_put_var_number(first.len, holder + 3, first.len + 4 - 3);
+        memcpy(holder + 4, first.buf, first.len);
+        ndn_block_t first_name = { holder, first.len + 4 };
+
+        /* compare it with service */
+        r = ndn_name_compare_block(&first_name, service);
+        if (r == 0) {
+            DPRINT("nfl-discovery: find one subprefix = ");
+            ndn_name_print(&_subprefix_table[i].sub);
+            putchar('\n');
+            ptr[i] = _subprefix_table[i].sub;
+        }
+    }
+
+    return 0;//success
+}
+
+static ndn_shared_block_t* nfl_discovery_make_broadcast(ndn_block_t* id){
+    const char* uri = "/servicelist";
+    ndn_shared_block_t* sl = ndn_name_from_uri(uri, strlen(uri));
+
+    for (int i = 0; i < NFL_SERVICE_ENTRIES_NUMOF && _service_table[i].ser.buf; ++i) {
+        sl = ndn_name_append_from_name(&sl->block, &_service_table[i].ser); 
+    }
+    
+    sl = ndn_name_append_from_name(id, &sl->block);
+
+    return sl; 
+}
+
+static int on_query(ndn_block_t* interest)
+{
+    ndn_block_t in;
+    if (ndn_interest_get_name(interest, &in) != 0) {
+        DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): cannot get name from interest"
+               "\n", handle->id);
+        return NDN_APP_ERROR;
+    }
+
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): service query received, name =",
+           handle->id);
+    ndn_name_print(&in);
     putchar('\n');
 
-    uint32_t lifetime = 3000;  // 1 sec
-    int r = ndn_app_express_interest(handle, &sn3_query->block, NULL, lifetime,
-                                     on_query_response, 
-                                     query_timeout); 
-    ndn_shared_block_release(sn3_query);
-    if (r != 0) {
-        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): failed to express query\n",
+    /* get wanted service name */
+    int home_len = ndn_name_get_size_from_block(&home_prefix);
+    ndn_block_t service;
+    ndn_name_get_component_from_block(&in, home_len + 1, &service);
+
+    /* reencode it into name TLV */
+    uint8_t* holder = (uint8_t*)malloc(service.len + 4);
+    holder[0] = NDN_TLV_NAME;
+    ndn_block_put_var_number(service.len + 2, holder + 1, service.len + 4 - 1);
+    holder[2] = NDN_TLV_NAME_COMPONENT;
+    ndn_block_put_var_number(service.len, holder + 3, service.len + 4 - 3);
+    memcpy(holder + 4, service.buf, service.len);
+    ndn_block_t service_name = { holder, service.len + 4 };
+
+    /* check and extract */
+    ndn_block_t ptr[NFL_SUBPREFIX_ENTRIES_NUMOF];
+    int r = nfl_discovery_service_extract(&service_name, ptr);
+    if(r == -1){
+        DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): no such service available, name =",
+           handle->id);
+        ndn_name_print(&service_name);
+        putchar('\n');
+
+        free(holder);
+        /* perhaps return a NACK data ? */
+        return NDN_APP_CONTINUE;
+    }
+
+    /* found match */
+    int len = 0;
+    for(int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && ptr[i].buf; ++i) len += ptr[i].len;
+
+    uint8_t* buffer = (uint8_t*)malloc(len);
+    uint8_t* start = buffer;    
+    for(int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && ptr[i].buf; ++i){
+        memcpy(start, ptr[i].buf, ptr[i].len); start += ptr[i].len;
+    }
+    ndn_block_t content = { buffer, len};
+
+    /* send back data */
+    ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
+    ndn_shared_block_t* back = ndn_name_append_uint8(&in, 2);
+    ndn_shared_block_t* data =
+        ndn_data_create(&back->block, &meta, &content,
+                        NDN_SIG_TYPE_ECDSA_SHA256, NULL, ecc_key_pri, sizeof(ecc_key_pri));
+
+    if (data == NULL) {
+        DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): cannot compose Query Response\n",
+               handle->id);
+        ndn_shared_block_release(data);
+        return NDN_APP_ERROR;
+    }
+
+    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): send Query Response to NDN thread, name =",
+           handle->id);
+    ndn_name_print(&back->block);
+    putchar('\n');
+    ndn_shared_block_release(back);
+
+    /* pass the packet */
+    if (ndn_app_put_data(handle, data) != 0) {
+        DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): cannot put Query Response\n",
                handle->id);
         return NDN_APP_ERROR;
     }
@@ -240,162 +394,182 @@ static int ndn_app_express_discovery_query(void)
     return NDN_APP_CONTINUE;
 }
 
-static int on_upload_request(ndn_block_t* interest)
+static int on_query_response(ndn_block_t* interest, ndn_block_t* data){
+    
+    (void)interest;
+    ndn_block_t name;
+    ndn_data_get_name(data, &name);
+    ndn_data_get_content(data, &to_nfl);
+    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): Query Response received, name =",
+           handle->id);
+    ndn_name_print(&name);
+    putchar('\n');
+    
+    msg_t query_reply;
+    query_reply.type = NFL_START_DISCOVERY_QUERY_REPLY;
+    query_reply.content.ptr = &to_nfl;
+    msg_try_send(&query_reply, nfl_pid); //send response to nfl
+
+    return NDN_APP_CONTINUE;
+}
+
+static int on_query_timeout(ndn_block_t* interest){
+    
+    ndn_block_t name;
+    int r = ndn_interest_get_name(interest, &name);
+    assert(r == 0);
+
+    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): Query timeout, name =",
+           handle->id);
+    ndn_name_print(&name);
+    putchar('\n');
+
+    return NDN_APP_CONTINUE;
+}
+
+static int on_broadcast(ndn_block_t* interest)
 {
-    /* 
-        Controller: Interest->/<home prefix>/<valid host name>/service/<CK signature>
-    */
-    ndn_block_t req;
-    if (ndn_interest_get_name(interest, &req) != 0) {
-        DPRINT("Device (pid=%" PRIkernel_pid "): cannot get name from Service Upload Request"
+    ndn_block_t in;
+    if (ndn_interest_get_name(interest, &in) != 0) {
+        DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): cannot get name from interest"
                "\n", handle->id);
         return NDN_APP_ERROR;
     }
 
-    DPRINT("Device (pid=%" PRIkernel_pid "): Serive Upload Request received, name=",
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): broadcast received, name=",
            handle->id);
-    ndn_name_print(&req);
+    ndn_name_print(&in);
     putchar('\n');
 
-    ndn_shared_block_t* upload_name = ndn_name_append_uint8(&req, 3);
-    if (upload_name == NULL) {
-        DPRINT("Device (pid=%" PRIkernel_pid "): cannot append Version component to "
-               "name\n", handle->id);
-        return NDN_APP_ERROR;
-    }
+    nfl_discovery_collect(&in);
 
-    //set the metainfo
-    ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
-    
-
-    //TODO: to extract from NFL the list of served prefixes
-    const char* served_prefix0 = "/irl/printer/394/setOn";
-    const char* served_prefix1 = "/irl/temperture/397/read";
-    const char* served_prefix2 = "/irl/light/374/setDim";
-    ndn_shared_block_t* service[3];
-    service[0] = ndn_name_from_uri(served_prefix0, strlen(served_prefix0));
-    service[1] = ndn_name_from_uri(served_prefix1, strlen(served_prefix1));
-    service[2] = ndn_name_from_uri(served_prefix2, strlen(served_prefix2));
-
-    //prepare the uploaded content
-    ndn_block_t bigbuffer;
-    bigbuffer.buf = (uint8_t*)malloc(service[0]->block.len + 
-                                     service[1]->block.len + 
-                                     service[2]->block.len);
-    bigbuffer.len = service[0]->block.len + 
-                                     service[1]->block.len + 
-                                     service[2]->block.len;
-
-    DPRINT(" length of uploaded content length : %d\n", bigbuffer.len);
-    
-    //payload
-    memcpy(&bigbuffer, service[0]->block.buf, service[0]->block.len);
-    memcpy(&bigbuffer + service[0]->block.len, service[1]->block.buf,
-                                               service[1]->block.len);
-    memcpy(&bigbuffer + service[0]->block.len + service[1]->block.len,
-                        service[2]->block.buf, service[2]->block.len);
-    //make the packet
-    ndn_shared_block_t* uploaded_packet =
-        ndn_data_create(&upload_name->block, &meta, &bigbuffer,
-                        NDN_SIG_TYPE_ECDSA_SHA256, NULL,
-                        com_key_pri, sizeof(com_key_pri));
-    if (uploaded_packet == NULL) {
-        DPRINT("Device (pid=%" PRIkernel_pid "): cannot create uploaded packet\n",
-               handle->id);
-        ndn_shared_block_release(upload_name);
-        return NDN_APP_ERROR;
-    }
-
-    DPRINT("Device (pid=%" PRIkernel_pid "): send Uploaded Packet to NDN thread, name=",
-           handle->id);
-    ndn_name_print(&upload_name->block);
+    /* expriment on query */
+    uint32_t lifetime = 60000; // 1 minute
+    ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix, &_identity_table[0].id);
+    toquery = ndn_name_append_from_name(&toquery->block, &_identity_table[0].list[0].avail);
+    const char* query = "/query/v3";
+    ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
+    toquery = ndn_name_append_from_name(&toquery->block, &str->block);    
+    ndn_app_express_interest(handle, &toquery->block, NULL, lifetime, on_query_response, NULL);
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): query, name =", handle->id);
+    ndn_name_print(&toquery->block);
     putchar('\n');
-    ndn_shared_block_release(upload_name);
 
-    // pass ownership of "sd" to the API
-    if (ndn_app_put_data(handle, uploaded_packet) != 0) {
-        DPRINT("Device (pid=%" PRIkernel_pid "): cannot put Uploaded Packet\n",
-               handle->id);
-        return NDN_APP_ERROR;
-    }
-
-    DPRINT("Device (pid=%" PRIkernel_pid "): return to the app\n", handle->id);
-    free(uploaded_packet);
-    return NDN_APP_STOP;
+    return NDN_APP_CONTINUE;
 }
 
-static int query_timeout(ndn_block_t* interest)
+void *nfl_discovery(void* bootstrapTuple);
 {
-    (void)interest;
-    DPRINT("Service Discovery Query Timeout\n");
-    return NDN_APP_CONTINUE; 
-}
+    /* extract home prefix and identity name from bootstrapTuple */
+    home_prefix = bootstrapTuple->home_prefix;
 
-void *ndn_discovery(void* bootstrapTuple)
-{
-    if(bootstrapTuple == NULL){
-        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): no bootstrapTuple available\n",
-               thread_getpid());
-    }
+    /* extrace identity name from m_cert */
 
-    //install home prefix from bootstrapTuple
-    nfl_bootstrap_tuple_t* tuple = bootstrapTuple; 
-    home_prefix.buf = tuple->home_prefix->buf;
-    home_prefix.len = tuple->home_prefix->len;
 
-    msg_t msg, reply;
-
+    /* initiate parameters */
     handle = ndn_app_create();
     if (handle == NULL) {
-        DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): cannot create app handle\n",
+        DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): cannot create app handle\n",
                thread_getpid());
-        return NULL;
+        return;
     }
 
-    /*
-        Controller: Interest->/<home prefix>/<valid host name>/service/<CK signature>
-    */
-    ndn_block_t r;
-    ndn_data_get_name(tuple->m_cert, &r);
+    nfl_discovery_subprefix_table_init();
+    nfl_discovery_service_table_init();
 
-    const char* uri_req = "/service"; 
-    ndn_shared_block_t* sn_req = ndn_name_from_uri(uri_req, strlen(uri_req));
-    //move the pointer by 4 bytes: 2 bytes for name header, 2 bytes for component header
-    ndn_shared_block_t* reg = ndn_name_append(&r,
-                                 (&sn_req->block)->buf + 4, (&sn_req->block)->len - 4);
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): init\n", thread_getpid());
 
-    if (ndn_app_register_prefix(handle, reg, on_upload_request) != 0) {
-        DPRINT("Device (pid=%" PRIkernel_pid "): failed to register upload prefix\n",
-               handle->id);
-        ndn_app_destroy(handle);
-        return NULL;
+    /* discovery event loop */
+    msg_t msg, reply, msg_q[NFL_MSG_QUEUE_SIZE];
+    msg_init_queue(msg_q, NFL_MSG_QUEUE_SIZE);
+
+    //TODO: initialize the NFL here
+
+    /* start event loop */
+    while (1) {
+        msg_receive(&msg);
+
+        switch (msg.type) {
+            case NFL_START_DISCOVERY:
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): start discovery\n",
+                        thread_getpid());
+
+                /* make service prefix list*/
+                nfl_discovery_make_service_list();
+
+                /* register broadcast filter */
+                const char* prefix = "/servicediscovery";
+                ndn_shared_block_t* spn = ndn_name_from_uri(prefix, strlen(prefix));
+                spn = ndn_name_append_from_name(&home_prefix, &spn->block);
+                ndn_app_register_prefix(handle, spn, on_broadcast);
+                
+                /* register unicast query filter */
+                for (int j = 0; j < NFL_SERVICE_ENTRIES_NUMOF && _service_table[j].ser.buf; ++j) {
+                    ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix, &host_name);
+                    toquery = ndn_name_append_from_name(&toquery->block, &_service_table[j].ser);
+                    const char* query = "/query";
+                    ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
+                    toquery = ndn_name_append_from_name(&toquery->block, &str->block);
+                    ndn_app_register_prefix(handle, toquery, on_query);
+                }
+
+                /* make and broadcast interest */
+                ndn_shared_block_t* tosend = ndn_name_append_from_name(&spn->block, &host_name);
+                tosend = nfl_discovery_make_broadcast(&tosend->block);
+
+                uint32_t lifetime = 60000; // 1 minute
+                ndn_app_express_interest(handle, &tosend->block, NULL, lifetime, NULL, NULL);
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): broadcast, name =", handle->id);
+                ndn_name_print(&tosend->block);
+                putchar('\n');
+                                
+                reply.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&msg, &reply);//this should be the last operation in while loop 
+                
+                ndn_app_run(handle); 
+                /* discovery thread will stall here until a terminate instruction from NFL sent in */
+                
+                break;
+
+            case NFL_SET_DISCOVERY_PREFIX:
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): set service prefix\n",
+                        thread_getpid());
+
+                //ptr should point to a string
+                nfl_discovery_add_subprefix(msg.content.ptr);
+                
+                reply.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&msg, &reply);
+                break;
+
+            case NFL_START_DISCOVERY_QUERY:
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): start discovery query\n",
+                        thread_getpid());
+
+                /* msg should contain a <id, service> tuple */
+                uint32_t lifetime = 2000; // 2 seconds                    
+                ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
+                                             msg.content.ptr->identity);
+                toquery = ndn_name_append_from_name(&toquery->block,
+                                             msg.content.ptr->service);
+                const char* query = "/query";
+                ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
+                toquery = ndn_name_append_from_name(&toquery->block, &str->block);
+                toquery = ndn_name_append_from_name(&toquery->block, &host_name);
+
+                ndn_app_express_interest(handle, &toquery->block, NULL, lifetime, on_query_response, on_query_timeout);
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): query, name =", handle->id);
+                ndn_name_print(&toquery->block);
+                putchar('\n');
+
+                break;
+
+            default:
+                break;
+        }
     }
 
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): enter round trip 1\n",
-           handle->id);
-    ndn_app_run(handle);
-    ndn_app_destroy(handle);
-
-    handle = ndn_app_create();
-    ndn_app_express_discovery_query();  /* round trip two */
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): enter round trip 2\n",
-           handle->id);
-    ndn_app_run(handle);
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): returned from trip 2\n",
-           handle->id);
-
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): into ipc loop\n", handle->id);
-
-    while(1){
-    msg_receive(&msg);
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): ipc request got\n", handle->id);
-    nfl_discovery_tuple_t tuple = { &served_prefixes, 3};
-    reply.content.ptr = &tuple;
-    msg_reply(&msg, &reply);
-    DPRINT("nfl-discovery: (pid=%" PRIkernel_pid "): ipc loop quit\n", handle->id);
-    break; 
-    }
-
-    ndn_app_destroy(handle);
     return NULL;
+}
+
 }

@@ -23,8 +23,8 @@ typedef struct nfl_bootstrap_tuple {
 } nfl_bootstrap_tuple_t;
 
 typedef struct nfl_discovery_tuple {
-    ndn_block_t* prefix;     
-    int num;      
+    ndn_block_t* identity;     
+    ndn_block_t* service;       
 } nfl_discovery_tuple_t;
 
 #ifdef __cplusplus

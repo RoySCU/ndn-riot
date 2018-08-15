@@ -20,9 +20,6 @@ int nfl_start_bootstrap(uint8_t BKpub[64], uint8_t BKpvt[32])
     key.pvt = BKpvt;
     msg.content.ptr = &key;
     msg_send_receive(&msg, &reply, nfl_pid); 
-    DEBUG("NFL: bootstrap request processed from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
 
     return true;
 }
@@ -34,8 +31,6 @@ int nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple)
     msg.type = NFL_EXTRACT_BOOTSTRAP_TUPLE;
     msg.content.ptr = NULL;
     msg_send_receive(&msg, &reply, nfl_pid); 
-    DEBUG("NFL: bootstrap request processed from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
 
     tuple = reply.content.ptr;
     return true;
@@ -47,20 +42,46 @@ int nfl_start_discovery(void)
     msg.type = NFL_START_DISCOVERY;
     msg.content.ptr = NULL;
     msg_send_receive(&msg, &reply, nfl_pid); 
-    DEBUG("NFL: Service Discovery request processed from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
+
     return true;
 }
 
-int nfl_extract_discovery_tuple(nfl_discovery_tuple_t* tuple)
+int nfl_set_discovery_prefix(const char* ptr)
 {
-    (void)tuple;
+    msg_t msg, reply;
+    msg.type = NFL_SET_DISCOVERY_PREFIX;
+    msg.content.ptr = ptr;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+
+    return true;
+}
+
+int nfl_init_discovery(void)
+{
+    msg_t msg, reply;
+    msg.type = NFL_INIT_DISCOVERY;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+
+    return true;
+}
+
+int nfl_start_discovery_query(nfl_discovery_tuple_t* tuple)
+{
+    msg_t msg, reply;
+    msg.type = NFL_START_DISCOVERY_QUERY;
+    msg.content.ptr = tuple;
+    msg_send_receive(&msg, &reply, nfl_pid); 
+
+    return true;
+}
+
+nfl_identity_entry_t* nfl_extract_discovery_tuple(void)
+{
     msg_t msg, reply;
     msg.type = NFL_EXTRACT_DISCOVERY_TUPLE;
     msg.content.ptr = NULL;
     msg_send_receive(&msg, &reply, nfl_pid); 
-    DEBUG("NFL: discovery tuple extraction request processed from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-    tuple = reply.content.ptr;
-    return true;
+
+    return reply.content.ptr;
 }

@@ -33,14 +33,19 @@ static char _stack[NFL_STACK_SIZE];
 #endif
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
+
 kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
-char bootstrap_stack[2*THREAD_STACKSIZE_MAIN];
+char bootstrap_stack[THREAD_STACKSIZE_MAIN];
+
 kernel_pid_t nfl_discovery_pid = KERNEL_PID_UNDEF;
 char discovery_stack[THREAD_STACKSIZE_MAIN];
+nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
+nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
+nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
+static msg_t query;
 
 //below are the tables and tuples NFL thread need to maintain
 static nfl_bootstrap_tuple_t* bootstrapTuple = NULL;
-static ndn_block_t* discoveryTuple = NULL;
 
 static int _start_bootstrap(void* ptr)
 {
@@ -54,7 +59,7 @@ static int _start_bootstrap(void* ptr)
     //this thread directly registerd on ndn core thread as a application
     send.content.ptr = reply.content.ptr;
 
-    uint32_t seconds = 5;
+    uint32_t seconds = 2;
     xtimer_sleep(seconds); //we need some delay to achieve syc comm
     msg_send_receive(&send, &reply, nfl_bootstrap_pid);
     
@@ -69,26 +74,45 @@ static int _start_bootstrap(void* ptr)
     return true;
 }
 
-static int _start_discovery(void* ptr)
+static int _start_discovery(void)
 {
-    //ptr pointed to a struct may laterly defined 
-    (void)ptr;
-    //assign value
-    msg_t send, reply;
-    reply.content.ptr = NULL;
-    nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
-                            THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, ndn_discovery, bootstrapTuple,
-                             "nfl-discovery");
-    //this thread directly registerd on ndn core thread as a application
-    send.content.ptr = reply.content.ptr;
+    msg_t _send, _reply;
+    _reply.content.ptr = NULL;
 
-    uint32_t seconds = 5;
-    xtimer_sleep(seconds); //we need some delay to achieve syc comm
-    msg_send_receive(&send, &reply, nfl_discovery_pid);
-    
-    //store the ipc message in nfl maintained tuple 
-    discoveryTuple = reply.content.ptr;
-    DEBUG("discoveryTuple received through ipc tunnel, block length = %d\n", discoveryTuple->len);
+    //this thread directly registerd on ndn core thread as a application
+    _send.content.ptr = _reply.content.ptr;
+
+    msg_send_receive(&_send, &_reply, nfl_discovery_pid);
+
+    DEBUG("NFL: Service Discovery start\n");
+    return true;
+}
+
+
+static int _set_discovery_prefix(void* ptr)
+{
+    msg_t _send, _reply;
+    _reply.content.ptr = NULL;
+
+    //ptr should indicate a uri
+    _send.content.ptr = ptr;
+    _send.type = NFL_SET_DISCOVERY_PREFIX;
+    msg_send_receive(&_send, &_reply, nfl_discovery_pid);
+
+    return true;
+}
+
+static int _init_discovery(void)
+{
+    //pass bootstrapTuple to discovery scenario
+    if(bootstrapTuple == NULL){
+         DEBUG("NFL: haven't bootstrapped yet\n");
+         return false;
+    }
+
+    nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
+                        THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, bootstrapTuple,
+                        "nfl-discovery");
     return true;
 }
 
@@ -113,7 +137,7 @@ static void *_event_loop(void *args)
                 
                 _start_bootstrap(msg.content.ptr);
                 
-                reply.content.ptr = NULL; //just to invoke the nfl caller process
+                reply.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&msg, &reply);
 
                 //ndn_pit_timeout((msg_t*)msg.content.ptr);
@@ -123,9 +147,47 @@ static void *_event_loop(void *args)
                 DEBUG("NFL: START_DISCOVERY message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
-                _start_discovery(msg.content.ptr);
+                _start_discovery();
                 
-                reply.content.ptr = NULL; //just to invoke the nfl caller process
+                reply.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&msg, &reply);
+                break;
+
+            case NFL_START_DISCOVERY_QUERY:
+                DEBUG("NFL: START_DISCOVERY_QUERY message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+
+                msg_try_send(&msg, nfl_discovery_pid); //directly forward to discovery thread
+                query = msg;//buffer the query message
+
+                break;
+
+            case NFL_START_DISCOVERY_QUERY_REPLY:
+                DEBUG("NFL: START_DISCOVERY_QUERY_REPLY message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+
+                msg_reply(&query, &msg);
+
+                break;
+
+            case NFL_INIT_DISCOVERY:
+                DEBUG("NFL: INIT_DISCOVERY message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                               
+                _init_discovery();
+
+                reply.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&msg, &reply);
+                break;
+
+            case NFL_SET_DISCOVERY_PREFIX:
+                DEBUG("NFL: SET_DISCOVERY_PREFIX message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+
+                //ptr should point to a string
+                _set_discovery_prefix(msg.content.ptr);
+                
+                reply.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&msg, &reply);
                 break;
 
@@ -136,43 +198,13 @@ static void *_event_loop(void *args)
                 msg_reply(&msg, &reply);
                 break;
 
-            case NFL_EXTRACT_DISCOVERY_TUPLE:
-                DEBUG("NFL: EXTRACT_DISCOVERY_TUPLE message received from pid %"
+            case NFL_EXTRACT_DISCOVERY_LIST:
+                DEBUG("NFL: EXTRACT_DISCOVERY_LIST message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
-                reply.content.ptr = discoveryTuple;           
+
+                //extract the tuple
+                reply.content.ptr = &_identity_table;           
                 msg_reply(&msg, &reply);
-                break;
-
-            case NFL_EXTRACT_SERVICE_LIST:
-                DEBUG("NFL: EXTRACT_SERVICE_LIST message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-                /*if (ndn_fib_add((ndn_shared_block_t*)msg.content.ptr,
-                                msg.sender_pid,
-                                NDN_FACE_APP) != 0) {
-                    DEBUG("ndn: failed to add fib entry\n");
-                    ndn_shared_block_release(
-                        (ndn_shared_block_t*)msg.content.ptr);
-                    reply.content.value = 1;
-                } else {
-                    reply.content.value = 0;  // indicate success
-                }
-                msg_reply(&msg, &reply);*/
-                break;
-
-            case NFL_EXTRACT_HOME_PREFIX:
-                DEBUG("NFL: EXTRACT_HOME_PREFIX messages received from pid %"
-                    PRIkernel_pid "\n", msg.sender_pid);
-                /*struct _ndn_app_add_strategy_param* param =
-                    (struct _ndn_app_add_strategy_param*)msg.content.ptr;
-                if (ndn_forwarding_strategy_add(param->prefix,
-                                param->strategy) != 0) {
-                    DEBUG("ndn: failed to add forwarding strategy\n");
-                    ndn_shared_block_release(param->prefix);
-                    reply.content.value = 1;
-                } else {
-                    reply.content.value = 0;
-                }
-                msg_reply(&msg, &reply);*/
                 break;
 
             default:
