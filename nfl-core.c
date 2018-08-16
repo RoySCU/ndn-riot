@@ -42,36 +42,54 @@ char discovery_stack[THREAD_STACKSIZE_MAIN];
 nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
 nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
 nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
-static msg_t query;
+static ndn_block_t queryBuffer;
 
 //below are the tables and tuples NFL thread need to maintain
-static nfl_bootstrap_tuple_t* bootstrapTuple = NULL;
+static nfl_bootstrap_tuple_t bootstrapTuple;
 
 static int _start_bootstrap(void* ptr)
 {
-    //ptr pointed to a struct have three component: BKpub, BKpri, m_host
+    //ptr pointed to a key pair struct
     
     //assign value
-    msg_t send, reply;
-    reply.content.ptr = NULL;
+    msg_t _send, _reply;
+    _reply.content.ptr = NULL;
     nfl_bootstrap_pid = thread_create(bootstrap_stack, sizeof(bootstrap_stack),
-                            THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, ndn_bootstrap, ptr, "nfl-bootstrap");
+                            THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_bootstrap, ptr, "nfl-bootstrap");
     //this thread directly registerd on ndn core thread as a application
-    send.content.ptr = reply.content.ptr;
+    _send.content.ptr = _reply.content.ptr;
+    _send.type = NFL_START_BOOTSTRAP;
 
-    uint32_t seconds = 2;
-    xtimer_sleep(seconds); //we need some delay to achieve syc comm
-    msg_send_receive(&send, &reply, nfl_bootstrap_pid);
+    msg_send_receive(&_send, &_reply, nfl_bootstrap_pid);
+    nfl_bootstrap_tuple_t* buffer = _reply.content.ptr;
     
-    //store the ipc message in nfl maintained tuple 
-    bootstrapTuple = reply.content.ptr;
-    ndn_block_t* m_cert = bootstrapTuple->anchor_cert;
-    ndn_block_t name;
-    ndn_data_get_name(m_cert, &name);
-    DEBUG("anchor certificate received through ipc tunnel, name = ");
-    ndn_name_print(&name);
-    putchar('\n');
-    return true;
+    //check and store buffer tuple
+    if(!buffer) return false;
+    bootstrapTuple.m_cert.buf = (uint8_t*)malloc(buffer->m_cert.len);
+    memcpy(bootstrapTuple.m_cert.buf, buffer->m_cert.buf, buffer->m_cert.len);
+    bootstrapTuple.m_cert.len = buffer->m_cert.len;
+
+    bootstrapTuple.anchor_cert.buf = (uint8_t*)malloc(buffer->anchor_cert.len);
+    memcpy(bootstrapTuple.anchor_cert.buf, buffer->anchor_cert.buf, buffer->anchor_cert.len);
+    bootstrapTuple.anchor_cert.len = buffer->anchor_cert.len;
+
+    bootstrapTuple.home_prefix.buf = (uint8_t*)malloc(buffer->home_prefix.len);
+    memcpy(bootstrapTuple.home_prefix.buf, buffer->home_prefix.buf, buffer->home_prefix.len);
+    bootstrapTuple.home_prefix.len = buffer->home_prefix.len;
+
+    if(bootstrapTuple.m_cert.buf){
+        DEBUG("NFL: bootstrap success\n");
+
+        ndn_block_t name;
+        ndn_data_get_name(&bootstrapTuple.m_cert, &name);
+        DEBUG("m_cert name =  ");
+        ndn_name_print(&name);
+        putchar('\n');
+
+        return true;
+    }
+    
+    return false;
 }
 
 static int _start_discovery(void)
@@ -88,6 +106,24 @@ static int _start_discovery(void)
     return true;
 }
 
+static ndn_block_t* _start_discovery_query(void* ptr)
+{
+    msg_t _send, _reply;
+    _reply.content.ptr = NULL;
+
+    //this thread directly registerd on ndn core thread as a application
+    _send.content.ptr = ptr;
+    _send.type = NFL_START_DISCOVERY_QUERY;
+    msg_send_receive(&_send, &_reply, nfl_discovery_pid);
+
+    //_reply should contain a ndn_block_t content
+    if(_reply.content.ptr){
+        ndn_block_t* ptr = _reply.content.ptr;
+        return ptr;
+    }
+
+    return NULL;
+}
 
 static int _set_discovery_prefix(void* ptr)
 {
@@ -135,12 +171,13 @@ static void *_event_loop(void *args)
                 DEBUG("NFL: START_BOOTSTRAP message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
                 
-                _start_bootstrap(msg.content.ptr);
+                if(_start_bootstrap(msg.content.ptr)){
+                    reply.content.ptr = &bootstrapTuple;
+                }
+                else reply.content.ptr = NULL;
                 
-                reply.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&msg, &reply);
 
-                //ndn_pit_timeout((msg_t*)msg.content.ptr);
                 break;
 
             case NFL_START_DISCOVERY:
@@ -157,17 +194,9 @@ static void *_event_loop(void *args)
                 DEBUG("NFL: START_DISCOVERY_QUERY message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
-                msg_try_send(&msg, nfl_discovery_pid); //directly forward to discovery thread
-                query = msg;//buffer the query message
-
-                break;
-
-            case NFL_START_DISCOVERY_QUERY_REPLY:
-                DEBUG("NFL: START_DISCOVERY_QUERY_REPLY message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                msg_reply(&query, &msg);
-
+                reply.content.ptr = _start_discovery_query(msg.content.ptr);
+                
+                msg_reply(&msg, &reply);
                 break;
 
             case NFL_INIT_DISCOVERY:
@@ -194,7 +223,10 @@ static void *_event_loop(void *args)
             case NFL_EXTRACT_BOOTSTRAP_TUPLE:
                 DEBUG("NFL: EXTRACT_BOOTSTRAP_TUPLE message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
-                reply.content.ptr = bootstrapTuple;           
+
+                if(bootstrapTuple.m_cert.buf) reply.content.ptr = &bootstrapTuple;
+                else reply.content.ptr = NULL;
+
                 msg_reply(&msg, &reply);
                 break;
 

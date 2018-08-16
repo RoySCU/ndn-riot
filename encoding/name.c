@@ -582,4 +582,16 @@ ndn_shared_block_t* ndn_name_append_from_name(ndn_block_t* block, ndn_block_t* b
 
     return ptr;
 }
+
+int ndn_name_wire_decode(ndn_block_t* buf, ndn_name_t* name){
+    int len = ndn_name_get_size_from_block(buf);
+
+    name->comps = malloc(len * sizeof(ndn_block_t));
+
+    for(int i = 0; i < len; ++i) 
+        ndn_name_get_component_from_block(buf, i, &name->comps[i]);
+
+    return true;
+}
+
 /** @} */

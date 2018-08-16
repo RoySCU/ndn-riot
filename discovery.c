@@ -46,7 +46,7 @@ static uint8_t ecc_key_pub[] = {
 
 static ndn_block_t home_prefix;
 static ndn_block_t host_name;
-static ndn_block_t to_nfl;
+static msg_t from_nfl, to_nfl;
 
 void nfl_discovery_service_table_init(void)
 {
@@ -398,18 +398,16 @@ static int on_query(ndn_block_t* interest)
 static int on_query_response(ndn_block_t* interest, ndn_block_t* data){
     
     (void)interest;
-    ndn_block_t name;
+    ndn_block_t name, content;
     ndn_data_get_name(data, &name);
-    ndn_data_get_content(data, &to_nfl);
+    ndn_data_get_content(data, &content);
     DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): Query Response received, name =",
            handle->id);
     ndn_name_print(&name);
     putchar('\n');
     
-    msg_t query_reply;
-    query_reply.type = NFL_START_DISCOVERY_QUERY_REPLY;
-    query_reply.content.ptr = &to_nfl;
-    msg_try_send(&query_reply, nfl_pid); //send response to nfl
+    to_nfl.content.ptr = &content;
+    msg_reply(&from_nfl, &to_nfl); //send response to nfl
 
     return NDN_APP_CONTINUE;
 }
@@ -424,6 +422,9 @@ static int on_query_timeout(ndn_block_t* interest){
            handle->id);
     ndn_name_print(&name);
     putchar('\n');
+
+    to_nfl.content.ptr = NULL;
+    msg_reply(&from_nfl, &to_nfl); //send response to nfl
 
     return NDN_APP_CONTINUE;
 }
@@ -464,10 +465,11 @@ void *nfl_discovery(void* bootstrapTuple)
     /* extract home prefix and identity name from bootstrapTuple */
     nfl_bootstrap_tuple_t* tuple = bootstrapTuple;
 
-    home_prefix = *tuple->home_prefix;
+    home_prefix = tuple->home_prefix;
 
-    ndn_data_get_name(tuple->m_cert, &host_name);
-
+    ndn_block_t cert_name;
+    ndn_data_get_name(&tuple->m_cert, &cert_name);
+    ndn_name_get_component_from_block(&cert_name, 1, &host_name);
 
     /* initiate parameters */
     handle = ndn_app_create();
@@ -483,16 +485,16 @@ void *nfl_discovery(void* bootstrapTuple)
     DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): init\n", thread_getpid());
 
     /* discovery event loop */
-    msg_t msg, reply, msg_q[_MSG_QUEUE_SIZE];
+    msg_t msg_q[_MSG_QUEUE_SIZE];
     msg_init_queue(msg_q, _MSG_QUEUE_SIZE);
 
     //TODO: initialize the NFL here
 
     /* start event loop */
     while (1) {
-        msg_receive(&msg);
+        msg_receive(&from_nfl);
 
-        switch (msg.type) {
+        switch (from_nfl.type) {
             case NFL_START_DISCOVERY:
                 DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): start discovery\n",
                         thread_getpid());
@@ -526,8 +528,8 @@ void *nfl_discovery(void* bootstrapTuple)
                 ndn_name_print(&tosend->block);
                 putchar('\n');
                                 
-                reply.content.ptr = NULL; //to invoke the nfl caller process
-                msg_reply(&msg, &reply);//this should be the last operation in while loop 
+                to_nfl.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&from_nfl, &to_nfl);//this should be the last operation in while loop 
                 
                 ndn_app_run(handle); 
                 /* discovery thread will stall here until a terminate instruction from NFL sent in */
@@ -539,10 +541,10 @@ void *nfl_discovery(void* bootstrapTuple)
                         thread_getpid());
 
                 //ptr should point to a string
-                nfl_discovery_add_subprefix(msg.content.ptr);
+                nfl_discovery_add_subprefix(from_nfl.content.ptr);
                 
-                reply.content.ptr = NULL; //to invoke the nfl caller process
-                msg_reply(&msg, &reply);
+                to_nfl.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&from_nfl, &to_nfl);
                 break;
 
             case NFL_START_DISCOVERY_QUERY:
