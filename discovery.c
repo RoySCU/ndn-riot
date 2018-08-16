@@ -553,7 +553,7 @@ void *nfl_discovery(void* bootstrapTuple)
 
                 /* msg should contain a <id, service> tuple */
                 lifetime = 2000; // 2 seconds
-                nfl_discovery_tuple_t* tuple = msg.content.ptr;                    
+                nfl_discovery_tuple_t* tuple = from_nfl.content.ptr;                    
                 ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
                                              tuple->identity);
                 toquery = ndn_name_append_from_name(&toquery->block,
