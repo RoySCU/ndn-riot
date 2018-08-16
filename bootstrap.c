@@ -57,7 +57,6 @@ static ndn_app_t* handle = NULL;
 static ndn_block_t anchor_global;
 static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
-static nfl_key_pair_t key;
 
 static uint64_t dh_p = 10000831;
 static uint64_t dh_g = 10000769;
@@ -193,7 +192,8 @@ static int on_certificate_response(ndn_block_t* interest, ndn_block_t* data)
 
     int r = ndn_data_get_name(data, &name1);  //need implementation
     assert(r == 0);
-    DPRINT("certificate response received, name=");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") Certificate Response received, name =",
+            handle->id );
     ndn_name_print(&name1);
     putchar('\n');
 
@@ -299,17 +299,15 @@ static int ndn_app_express_certificate_request(void)
     free(buf_bk);
     ndn_shared_block_release(sn9_cert);
 
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") express Certificate Request, name=");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") express Certificate Request, name =", handle->id);
     ndn_name_print(&sn10_cert->block);
     putchar('\n');
 
-    begin = xtimer_now_usec();
     uint32_t lifetime = 3000; 
     int r = ndn_app_express_interest(handle, &sn10_cert->block, NULL, lifetime,
                                      on_certificate_response, 
                                      certificate_timeout); 
     ndn_shared_block_release(sn10_cert);
-    ndn_shared_block_release(sn4_cert);
     if (r != 0) {
         DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") failed to express interest\n",
                handle->id);
@@ -337,7 +335,7 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     ndn_block_t name;
     int r = ndn_data_get_name(data, &name); 
     assert(r == 0);
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") bootstrap response received, name=");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") bootstrap response received, name =", handle->id);
     ndn_name_print(&name);
     putchar('\n');
 
@@ -356,7 +354,7 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     //skip content length (perhaps > 255 bytes)
     uint32_t num;
     int cl = ndn_block_get_var_number(buf, len, &num); 
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") content L length= %d\n", cl);
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") content L length= %d\n", handle->id, cl);
     buf += cl;
     len -= cl;
 
@@ -393,24 +391,26 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     anchor_global.buf = buf;
     anchor_global.len = len;
    
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate length: %d\n", anchor_global.len);
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate length: %d\n",
+                                                    handle->id, anchor_global.len);
     //get certificate name - home prefix
     ndn_data_get_name(&anchor_global, &home_prefix);
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate name=");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate name =", handle->id);
     ndn_name_print(&home_prefix);
     putchar('\n');
 
     //then we need verify anchor's signature
     ndn_block_t AKpub;
     ndn_data_get_content(&anchor_global, &AKpub);
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor public key TLV block length: %d\n", AKpub.len);
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") anchor public key TLV block length: %d\n",
+                                                                     handle->id, AKpub.len);
     memcpy(&anchor_key_pub, AKpub.buf + 2, 64);//skip the content and pubkey TLV header
 
     r = ndn_data_verify_signature(&anchor_global, anchor_key_pub, sizeof(anchor_key_pub));
     if (r != 0)
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") fail to verify sign-on response\n");
+        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") fail to verify sign-on response\n", handle->id);
     else{
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") sign-on response valid\n");
+        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") sign-on response valid\n", handle->id);
         ndn_app_express_certificate_request(); 
     }
     return NDN_APP_CONTINUE;  // block forever...
@@ -424,7 +424,7 @@ static int ndn_app_express_bootstrapping_request(void)
     const char* uri = "/ndn/sign-on";   
     ndn_shared_block_t* sn = ndn_name_from_uri(uri, strlen(uri));
     if (sn == NULL) {
-        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") cannot create name from uri ");
+        DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") cannot create name from uri ", handle->id);
         return NDN_APP_ERROR;
     }   //we creat a name first
 
@@ -487,7 +487,7 @@ static int ndn_app_express_bootstrapping_request(void)
     free(buf_sibs);
 
 
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") express bootstrap interest, name=");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") express bootstrap interest, name =", handle->id);
     ndn_name_print(&sn3->block);
     putchar('\n');
 
@@ -509,7 +509,7 @@ static int ndn_app_express_bootstrapping_request(void)
 static int bootstrap_timeout(ndn_block_t* interest)
 {
     (void)interest;
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") Bootstrapping Request Timeout\n");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") Bootstrapping Request Timeout\n", handle->id);
     
     to_nfl.content.ptr = NULL;
     msg_reply(&from_nfl, &to_nfl);
@@ -519,7 +519,7 @@ static int bootstrap_timeout(ndn_block_t* interest)
 static int certificate_timeout(ndn_block_t* interest)
 {
     (void)interest;
-    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") Certificate Request Timeout\n");
+    DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") Certificate Request Timeout\n", handle->id);
     
     to_nfl.content.ptr = NULL;
     msg_reply(&from_nfl, &to_nfl);
@@ -547,8 +547,8 @@ void *nfl_bootstrap(void *ptr)
     while(1){
         msg_receive(&from_nfl);
 
-        if (msg.type == NFL_START_BOOTSTRAP) {
-            DEBUG("nfl-bootstrap: (pid=%" PRIkernel_pid ") START_BOOTSTRAP message received from pid %"
+        if (from_nfl.type == NFL_START_BOOTSTRAP) {
+            DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") START_BOOTSTRAP message received from pid %"
                 PRIkernel_pid "\n", msg.sender_pid);
                 
             ndn_app_express_bootstrapping_request();  /* where all bootstrapping start */
