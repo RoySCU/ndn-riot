@@ -42,7 +42,6 @@ char discovery_stack[THREAD_STACKSIZE_MAIN];
 nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
 nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
 nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
-static ndn_block_t queryBuffer;
 
 //below are the tables and tuples NFL thread need to maintain
 static nfl_bootstrap_tuple_t bootstrapTuple;
@@ -65,16 +64,21 @@ static int _start_bootstrap(void* ptr)
     
     //check and store buffer tuple
     if(!buffer) return false;
+
     bootstrapTuple.m_cert.buf = (uint8_t*)malloc(buffer->m_cert.len);
-    memcpy(bootstrapTuple.m_cert.buf, buffer->m_cert.buf, buffer->m_cert.len);
+    uint8_t* m_cert_ptr = (uint8_t*)malloc(buffer->m_cert.len);
+    memcpy(m_cert_ptr, buffer->m_cert.buf, buffer->m_cert.len);
+    bootstrapTuple.m_cert.buf = m_cert_ptr;
     bootstrapTuple.m_cert.len = buffer->m_cert.len;
 
-    bootstrapTuple.anchor_cert.buf = (uint8_t*)malloc(buffer->anchor_cert.len);
-    memcpy(bootstrapTuple.anchor_cert.buf, buffer->anchor_cert.buf, buffer->anchor_cert.len);
+    uint8_t* anchor_cert_ptr = (uint8_t*)malloc(buffer->anchor_cert.len);
+    memcpy(anchor_cert_ptr, buffer->anchor_cert.buf, buffer->anchor_cert.len);
+    bootstrapTuple.anchor_cert.buf = anchor_cert_ptr;
     bootstrapTuple.anchor_cert.len = buffer->anchor_cert.len;
 
-    bootstrapTuple.home_prefix.buf = (uint8_t*)malloc(buffer->home_prefix.len);
-    memcpy(bootstrapTuple.home_prefix.buf, buffer->home_prefix.buf, buffer->home_prefix.len);
+    uint8_t* home_prefix_ptr = (uint8_t*)malloc(buffer->home_prefix.len);
+    memcpy(home_prefix_ptr, buffer->home_prefix.buf, buffer->home_prefix.len);
+    bootstrapTuple.home_prefix.buf = home_prefix_ptr;
     bootstrapTuple.home_prefix.len = buffer->home_prefix.len;
 
     if(bootstrapTuple.m_cert.buf){
@@ -141,13 +145,13 @@ static int _set_discovery_prefix(void* ptr)
 static int _init_discovery(void)
 {
     //pass bootstrapTuple to discovery scenario
-    if(bootstrapTuple == NULL){
+    if(bootstrapTuple.m_cert.buf == NULL){
          DEBUG("NFL: haven't bootstrapped yet\n");
          return false;
     }
 
     nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
-                        THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, bootstrapTuple,
+                        THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, &bootstrapTuple,
                         "nfl-discovery");
     return true;
 }
