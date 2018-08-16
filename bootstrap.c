@@ -491,7 +491,6 @@ static int ndn_app_express_bootstrapping_request(void)
     ndn_name_print(&sn3->block);
     putchar('\n');
 
-    begin = xtimer_now_usec();
     uint32_t lifetime = 3000;  // 1 sec
     int r = ndn_app_express_interest(handle, &sn3->block, NULL, lifetime,
                                      on_bootstrapping_response, 
@@ -549,7 +548,7 @@ void *nfl_bootstrap(void *ptr)
 
         if (from_nfl.type == NFL_START_BOOTSTRAP) {
             DPRINT("nfl-bootstrap: (pid=%" PRIkernel_pid ") START_BOOTSTRAP message received from pid %"
-                PRIkernel_pid "\n", msg.sender_pid);
+                PRIkernel_pid "\n", from_nfl.sender_pid);
                 
             ndn_app_express_bootstrapping_request();  /* where all bootstrapping start */
             break;
