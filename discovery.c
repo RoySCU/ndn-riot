@@ -47,6 +47,8 @@ static uint8_t ecc_key_pub[] = {
 static ndn_block_t home_prefix;
 static ndn_block_t host_name;
 static msg_t from_nfl, to_nfl;
+static ndn_shared_block_t* to_send = NULL;
+static uint32_t last;
 
 void nfl_discovery_service_table_init(void)
 {
@@ -532,6 +534,9 @@ void *nfl_discovery(void* bootstrapTuple)
                 msg_reply(&from_nfl, &to_nfl);//this should be the last operation in while loop 
                 
                 ndn_app_run(handle); 
+                last = xtimer_now_usec();
+                to_send = tosend;
+
                 /* discovery thread will stall here until a terminate instruction from NFL sent in */
                 
                 break;
@@ -572,6 +577,12 @@ void *nfl_discovery(void* bootstrapTuple)
 
             default:
                 break;
+        }
+
+        if(xtimer_now_usec() - last > 120000){
+            uint32_t lifetime = 60000;
+            ndn_app_express_interest(handle, &to_send->block, NULL, lifetime, NULL, NULL);
+            last = xtimer_now_usec();
         }
     }
 
