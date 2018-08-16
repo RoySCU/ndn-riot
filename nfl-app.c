@@ -27,7 +27,7 @@ nfl_bootstrap_tuple_t* nfl_start_bootstrap(nfl_key_pair_t* pair)
     return NULL;
 }
 
-nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple)
+nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(void)
 {
     msg_t msg, reply;
     msg.type = NFL_EXTRACT_BOOTSTRAP_TUPLE;

@@ -23,7 +23,7 @@ extern "C" {
 nfl_bootstrap_tuple_t* nfl_start_bootstrap(nfl_key_pair_t* pair);
 
 //caller must contain the memeory of tuple
-nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(nfl_bootstrap_tuple_t* tuple);
+nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(void);
 
 int nfl_start_discovery(void);
 
