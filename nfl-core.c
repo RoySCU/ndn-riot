@@ -104,6 +104,7 @@ static int _start_discovery(void)
     //this thread directly registerd on ndn core thread as a application
     _send.content.ptr = _reply.content.ptr;
 
+    _send.type = NFL_START_DISCOVERY;
     msg_send_receive(&_send, &_reply, nfl_discovery_pid);
 
     DEBUG("NFL: Service Discovery start\n");
