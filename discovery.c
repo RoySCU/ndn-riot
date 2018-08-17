@@ -602,9 +602,9 @@ void *nfl_discovery(void* bootstrapTuple)
         }
 
         if(xtimer_now_usec64() - last > 120000000 && setoff){
-            uint32_t lifetime = 60000;
-            ndn_app_express_interest(handle, &to_send->block, NULL, lifetime, NULL, NULL);
-            last = xtimer_now_usec64();
+            msg_t to_self;
+            to_self.type = NFL_START_DISCOVERY;
+            msg_try_send(&to_self, thread_getpid());
         }
     }
 
