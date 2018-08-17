@@ -48,7 +48,7 @@ static ndn_block_t home_prefix;
 static ndn_block_t host_name;
 static msg_t from_nfl, to_nfl;
 static ndn_shared_block_t* to_send = NULL;
-static uint32_t last;
+static uint64_t last;
 static int setoff = 0;
 
 void nfl_discovery_service_table_init(void)
@@ -553,7 +553,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 to_nfl.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&from_nfl, &to_nfl);//this should be the last operation in while loop 
                 
-                last = xtimer_now_usec();
+                last = xtimer_now_usec64();
                 setoff = 1;
                 to_send = tosend;
 
@@ -601,10 +601,10 @@ void *nfl_discovery(void* bootstrapTuple)
                 break;
         }
 
-        if(xtimer_now_usec() - last > 120000 && setoff){
+        if(xtimer_now_usec64() - last > 120000000 && setoff){
             uint32_t lifetime = 60000;
             ndn_app_express_interest(handle, &to_send->block, NULL, lifetime, NULL, NULL);
-            last = xtimer_now_usec();
+            last = xtimer_now_usec64();
         }
     }
 
