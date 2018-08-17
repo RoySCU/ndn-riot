@@ -478,7 +478,18 @@ void *nfl_discovery(void* bootstrapTuple)
 
 
     int home_len = ndn_name_get_size_from_block(&home_prefix);
-    ndn_name_get_component_from_block(&cert_name, home_len, &host_name);
+    ndn_block_t host;
+    ndn_name_get_component_from_block(&cert_name, home_len, &host);
+                    
+    /* construct it in name TLV */    
+    uint8_t* hold = (uint8_t*)malloc(host.len + 4);
+    hold[0] = NDN_TLV_NAME;
+    ndn_block_put_var_number(host.len + 2, hold + 1, host.len + 4 - 1);
+    hold[2] = NDN_TLV_NAME_COMPONENT;
+    ndn_block_put_var_number(host.len, hold + 3, host.len + 4 - 3);
+    memcpy(hold + 4, host.buf, toadd.len);
+    host_name.buf = hold;
+    host_name.len = host.len + 4; 
     ndn_name_print(&host_name); putchar('\n');
 
 
