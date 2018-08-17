@@ -440,7 +440,8 @@ static int broadcast_timeout(ndn_block_t* interest)
 
     DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): broadcast name = ",
            handle->id);
-
+    ndn_name_print(&name);
+    putchar('\n');
 
     return NDN_APP_CONTINUE; 
 }
@@ -454,13 +455,14 @@ static int on_broadcast(ndn_block_t* interest)
         return NDN_APP_ERROR;
     }
 
-    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): broadcast received, name=",
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): broadcast received, name =",
            handle->id);
     ndn_name_print(&in);
     putchar('\n');
 
     nfl_discovery_collect(&in);
 
+    
     /* expriment on query 
     uint32_t lifetime = 60000; // 1 minute
     ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix, &_identity_table[0].id);
