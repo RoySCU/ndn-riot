@@ -47,7 +47,6 @@ static uint8_t ecc_key_pub[] = {
 static ndn_block_t home_prefix;
 static ndn_block_t host_name;
 static msg_t from_nfl, to_nfl;
-static ndn_shared_block_t* to_send = NULL;
 
 static int broadcast_timeout(ndn_block_t* interest);
 
