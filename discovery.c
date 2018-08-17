@@ -356,6 +356,7 @@ static int on_query(ndn_block_t* interest)
         return NDN_APP_CONTINUE;
     }
 
+    free(holder);
     /* found match */
     int len = 0;
     for(int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && ptr[i].buf; ++i) len += ptr[i].len;
@@ -394,6 +395,7 @@ static int on_query(ndn_block_t* interest)
         return NDN_APP_ERROR;
     }
 
+    free(buffer);
     return NDN_APP_CONTINUE;
 }
 
