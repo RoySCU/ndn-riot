@@ -119,6 +119,8 @@ static ndn_block_t* _start_discovery_query(void* ptr)
     //this thread directly registerd on ndn core thread as a application
     _send.content.ptr = ptr;
     _send.type = NFL_START_DISCOVERY_QUERY;
+    
+    ndn_app_send_msg_to_app(nfl_discovery_pid, NULL, NDN_APP_MSG_TYPE_TERMINATE);
     msg_send_receive(&_send, &_reply, nfl_discovery_pid);
 
     //_reply should contain a ndn_block_t content

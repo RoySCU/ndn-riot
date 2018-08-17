@@ -415,7 +415,7 @@ static int on_query_response(ndn_block_t* interest, ndn_block_t* data){
 }
 
 static int on_query_timeout(ndn_block_t* interest){
-    
+
     ndn_block_t name;
     int r = ndn_interest_get_name(interest, &name);
     assert(r == 0);
@@ -607,6 +607,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): query, name =", handle->id);
                 ndn_name_print(&toquery->block);
                 putchar('\n');
+                ndn_app_run(handle);
 
                 break;
 
