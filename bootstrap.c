@@ -551,12 +551,11 @@ void *nfl_bootstrap(void *ptr)
                 PRIkernel_pid "\n", handle->id, from_nfl.sender_pid);
                 
             ndn_app_express_bootstrapping_request();  /* where all bootstrapping start */
+            ndn_app_run(handle);
             break;
         
         }    
     }
-
-    ndn_app_run(handle);
 
     ndn_app_destroy(handle);
 
