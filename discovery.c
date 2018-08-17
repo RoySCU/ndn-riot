@@ -432,6 +432,17 @@ static int on_query_timeout(ndn_block_t* interest){
     return NDN_APP_CONTINUE;
 }
 
+static int broadcast_timeout(ndn_block_t* interest)
+{
+    (void)interest;
+    
+    msg_t to_self;
+    to_self.type = NFL_START_DISCOVERY;
+    msg_try_send(&to_self, thread_getpid());
+
+    return NDN_APP_CONTINUE; 
+}
+
 static int on_broadcast(ndn_block_t* interest)
 {
     ndn_block_t in;
@@ -518,7 +529,7 @@ void *nfl_discovery(void* bootstrapTuple)
 
         switch (from_nfl.type) {
             case NFL_START_DISCOVERY:
-                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): start discovery\n",
+                DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): discovery broadcast\n",
                         thread_getpid());
 
                 /* make service prefix list*/
@@ -545,7 +556,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 tosend = nfl_discovery_make_broadcast(&tosend->block);
 
                 uint32_t lifetime = 60000; // 1 minute
-                ndn_app_express_interest(handle, &tosend->block, NULL, lifetime, NULL, NULL);
+                ndn_app_express_interest(handle, &tosend->block, NULL, lifetime, NULL, broadcast_timeout);
                 DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): broadcast, name =", handle->id);
                 ndn_name_print(&tosend->block);
                 putchar('\n');
