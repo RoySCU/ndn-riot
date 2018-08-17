@@ -346,6 +346,8 @@ static int on_query(ndn_block_t* interest)
 
     /* check and extract */
     ndn_block_t ptr[NFL_SUBPREFIX_ENTRIES_NUMOF];
+    for (int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF; ++i) ptr[i].buf = NULL;
+
     int r = nfl_discovery_service_extract(&service_name, ptr);
     if(r == -1){
         DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): no such service available, name =",
@@ -360,7 +362,6 @@ static int on_query(ndn_block_t* interest)
 
     free(holder);
 
-    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): extract complete\n", handle->id);
     /* found match */
     int len = 0;
     for(int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && ptr[i].buf; ++i) len += ptr[i].len;
@@ -372,9 +373,6 @@ static int on_query(ndn_block_t* interest)
     }
     ndn_block_t content = { buffer, len};
 
-
-    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): read to send back query response, length = %d\n",
-                                                                         handle->id, len);
     /* send back data */
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
     ndn_shared_block_t* back = ndn_name_append_uint8(&in, 2);
