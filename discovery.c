@@ -296,6 +296,8 @@ static int nfl_discovery_service_extract(ndn_block_t* service, ndn_block_t ptr[]
             putchar('\n');
             ptr[i] = _subprefix_table[i].sub;
         }
+        
+        free(holder);
     }
 
     return 0;//success
@@ -357,6 +359,8 @@ static int on_query(ndn_block_t* interest)
     }
 
     free(holder);
+
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): extract complete\n", handle->id);
     /* found match */
     int len = 0;
     for(int i = 0; i < NFL_SUBPREFIX_ENTRIES_NUMOF && ptr[i].buf; ++i) len += ptr[i].len;
