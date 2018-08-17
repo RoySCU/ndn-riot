@@ -437,10 +437,13 @@ static int broadcast_timeout(ndn_block_t* interest)
     ndn_interest_get_name(interest, &name);
     uint32_t lifetime = 60000; // 1 minute
     ndn_app_express_interest(handle, &name, NULL, lifetime, NULL, broadcast_timeout);
-    
-    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): broadcast",
+
+    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): broadcast name = ",
            handle->id);
 
+    ndn_name_print(&name);
+    putchar('\n');
+    
     return NDN_APP_CONTINUE; 
 }
 
