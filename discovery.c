@@ -372,6 +372,9 @@ static int on_query(ndn_block_t* interest)
     }
     ndn_block_t content = { buffer, len};
 
+
+    DPRINT("nfl-discovery(pid=%" PRIkernel_pid "): read to send back query response, length = %d\n",
+                                                                         handle->id, len);
     /* send back data */
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
     ndn_shared_block_t* back = ndn_name_append_uint8(&in, 2);
