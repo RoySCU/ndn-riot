@@ -48,8 +48,8 @@ static ndn_block_t home_prefix;
 static ndn_block_t host_name;
 static msg_t from_nfl, to_nfl;
 static ndn_shared_block_t* to_send = NULL;
-static uint64_t last;
-static int setoff = 0;
+
+static int broadcast_timeout(ndn_block_t* interest);
 
 void nfl_discovery_service_table_init(void)
 {
@@ -434,11 +434,13 @@ static int on_query_timeout(ndn_block_t* interest){
 
 static int broadcast_timeout(ndn_block_t* interest)
 {
-    (void)interest;
+    ndn_block_t name;
+    ndn_interest_get_name(interest, &name);
+    uint32_t lifetime = 60000; // 1 minute
+    ndn_app_express_interest(handle, &name, NULL, lifetime, NULL, broadcast_timeout);
     
-    msg_t to_self;
-    to_self.type = NFL_START_DISCOVERY;
-    msg_try_send(&to_self, thread_getpid());
+    DPRINT("nfl-discovery (pid=%" PRIkernel_pid "): broadcast",
+           handle->id);
 
     return NDN_APP_CONTINUE; 
 }
@@ -563,10 +565,7 @@ void *nfl_discovery(void* bootstrapTuple)
                                 
                 to_nfl.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&from_nfl, &to_nfl);//this should be the last operation in while loop 
-                
-                last = xtimer_now_usec64();
-                setoff = 1;
-                to_send = tosend;
+            
 
                 ndn_app_run(handle); 
 
@@ -612,11 +611,6 @@ void *nfl_discovery(void* bootstrapTuple)
                 break;
         }
 
-        if(xtimer_now_usec64() - last > 120000000 && setoff){
-            msg_t to_self;
-            to_self.type = NFL_START_DISCOVERY;
-            msg_try_send(&to_self, thread_getpid());
-        }
     }
 
     return NULL;
