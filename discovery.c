@@ -49,6 +49,7 @@ static ndn_block_t host_name;
 static msg_t from_nfl, to_nfl;
 static ndn_shared_block_t* to_send = NULL;
 static uint32_t last;
+static int setoff = 0;
 
 void nfl_discovery_service_table_init(void)
 {
@@ -468,10 +469,18 @@ void *nfl_discovery(void* bootstrapTuple)
     nfl_bootstrap_tuple_t* tuple = bootstrapTuple;
 
     home_prefix = tuple->home_prefix;
+    ndn_name_print(&home_prefix); putchar('\n');
+
 
     ndn_block_t cert_name;
     ndn_data_get_name(&tuple->m_cert, &cert_name);
-    ndn_name_get_component_from_block(&cert_name, 1, &host_name);
+    ndn_name_print(&cert_name); putchar('\n');
+
+
+    int home_len = ndn_name_get_size_from_block(&home_prefix);
+    ndn_name_get_component_from_block(&cert_name, home_len, &host_name);
+    ndn_name_print(&host_name); putchar('\n');
+
 
     /* initiate parameters */
     handle = ndn_app_create();
@@ -535,6 +544,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 
                 ndn_app_run(handle); 
                 last = xtimer_now_usec();
+                setoff = 1;
                 to_send = tosend;
 
                 /* discovery thread will stall here until a terminate instruction from NFL sent in */
@@ -579,7 +589,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 break;
         }
 
-        if(xtimer_now_usec() - last > 120000){
+        if(xtimer_now_usec() - last > 120000 && setoff){
             uint32_t lifetime = 60000;
             ndn_app_express_interest(handle, &to_send->block, NULL, lifetime, NULL, NULL);
             last = xtimer_now_usec();
