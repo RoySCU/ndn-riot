@@ -117,12 +117,6 @@ static int _start_discovery(void)
 
 static int _init_access(void)
 {
-    msg_t _send, _reply;
-    _reply.content.ptr = NULL;
-
-    //this thread directly registerd on ndn core thread as a application
-    _send.content.ptr = _reply.content.ptr;
-
     if(bootstrapTuple.m_cert.buf == NULL){
          DEBUG("NFL: haven't bootstrapped yet\n");
          return false;
