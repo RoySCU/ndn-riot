@@ -42,7 +42,7 @@ nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(void)
     return NULL;
 }
 
-int nfl_start_discovery(void)
+int nfl_start_discovery(void) //
 {
     msg_t msg, reply;
     msg.type = NFL_START_DISCOVERY;
