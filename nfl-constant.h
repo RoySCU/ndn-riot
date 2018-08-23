@@ -8,10 +8,6 @@ extern "C" {
 
 #define NFL_START_DISCOVERY    (0x0301)
 
-#define NFL_START_ACCESS_CONSUMER  (0x0308)
-
-#define NFL_START_ACCESS_PRODUCER  (0x030A)
-
 #define NFL_START_DISCOVERY_QUERY    (0x0305)
 
 #define NFL_START_DISCOVERY_QUERY_REPLY    (0x0307)
@@ -24,7 +20,8 @@ extern "C" {
 
 #define NFL_INIT_DISCOVERY  (0x0309)
 
-#define NFL_INIT_ACCESS  (0x030B)
+/* reserved for future work
+#define   (0x0308)*/
 
 #ifdef __cplusplus
 }

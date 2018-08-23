@@ -43,9 +43,6 @@ nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
 nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
 nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
 
-kernel_pid_t nfl_access_pid = KERNEL_PID_UNDEF;
-char access_stack[THREAD_STACKSIZE_MAIN];
-
 //below are the tables and tuples NFL thread need to maintain
 static nfl_bootstrap_tuple_t bootstrapTuple;
 
@@ -105,54 +102,6 @@ static int _start_discovery(void)
     _reply.content.ptr = NULL;
 
     //this thread directly registerd on ndn core thread as a application
-    _send.content.ptr = _reply.content.ptr;
-
-    _send.type = NFL_START_DISCOVERY;
-    msg_send_receive(&_send, &_reply, nfl_discovery_pid);
-
-    DEBUG("NFL: Service Discovery start\n");
-    return true;
-}
-
-static int _init_access(void)
-{
-    msg_t _send, _reply;
-    _reply.content.ptr = NULL;
-
-    //this thread directly registerd on ndn core thread as a application
-    _send.content.ptr = _reply.content.ptr;
-
-    if(bootstrapTuple.m_cert.buf == NULL){
-         DEBUG("NFL: haven't bootstrapped yet\n");
-         return false;
-    }
-
-    nfl_access_pid = thread_create(access_stack, sizeof(access_stack),
-                        THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_access, &bootstrapTuple,
-                        "nfl-access");
-
-    return true;
-}
-
-void* _start_access(msg_t* ptr)
-{
-    msg_t _send, _reply;
-    
-    _reply.content.ptr = NULL;
-
-    _send.content.ptr = ptr->content.ptr;
-    _send.type = ptr->type;
-
-    msg_send_receive(&_send, &_reply, nfl_access_pid);
-
-    return _reply.content.ptr;
-}
-
-static int _start_discovery(void)
-{
-    msg_t _send, _reply;
-    _reply.content.ptr = NULL;
-
     _send.content.ptr = _reply.content.ptr;
 
     _send.type = NFL_START_DISCOVERY;
@@ -245,24 +194,6 @@ static void *_event_loop(void *args)
                 _start_discovery();
                 
                 reply.content.ptr = NULL; //to invoke the nfl caller process
-                msg_reply(&msg, &reply);
-                break;
-
-            case NFL_START_ACCESS_PRODUCER:
-                DEBUG("NFL: START_ACCESS_PRODUCER message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_access(&msg); 
-
-                msg_reply(&msg, &reply);
-                break;
-
-            case NFL_START_ACCESS_CONSUMER:
-                DEBUG("NFL: START_ACCESS_CONSUMER message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_access(&msg); 
-                
                 msg_reply(&msg, &reply);
                 break;
 
