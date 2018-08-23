@@ -15,6 +15,7 @@
 #include "msg-type.h"
 #include "bootstrap.h"
 #include "discovery.h"
+#include "access.h"
 //#include "nfl-block.h"
 #define ENABLE_DEBUG 1
 #include <debug.h>
@@ -148,20 +149,6 @@ void* _start_access(msg_t* ptr)
     return _reply.content.ptr;
 }
 
-static int _start_discovery(void)
-{
-    msg_t _send, _reply;
-    _reply.content.ptr = NULL;
-
-    _send.content.ptr = _reply.content.ptr;
-
-    _send.type = NFL_START_DISCOVERY;
-    msg_send_receive(&_send, &_reply, nfl_discovery_pid);
-
-    DEBUG("NFL: Service Discovery start\n");
-    return true;
-}
-
 static ndn_block_t* _start_discovery_query(void* ptr)
 {
     msg_t _send, _reply;
@@ -280,6 +267,16 @@ static void *_event_loop(void *args)
                       PRIkernel_pid "\n", msg.sender_pid);
                                
                 _init_discovery();
+
+                reply.content.ptr = NULL; //to invoke the nfl caller process
+                msg_reply(&msg, &reply);
+                break;
+
+            case NFL_INIT_ACCESS:
+                DEBUG("NFL: INIT_ACCESS message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                               
+                _init_access();
 
                 reply.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&msg, &reply);
