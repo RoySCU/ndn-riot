@@ -479,7 +479,7 @@ void *nfl_access(void* bootstrapTuple)
     identity.len = host.len + 4; 
 
     DPRINT("nfl-access (pid=%" PRIkernel_pid "): identity name: ",
-               thread_getpid())
+               thread_getpid());
     ndn_name_print(&identity); 
     putchar('\n');
 
@@ -504,9 +504,9 @@ void *nfl_access(void* bootstrapTuple)
                         thread_getpid());
 
                 /* initiate ace key pair */
-                nfl_access_tuple_t* ptr = from_nfl.content.ptr;
-                memcpy(ace_key_pub, ptr->ace->pub, 64);
-                memcpy(ace_key_pri, ptr->ace->pvt, 32);
+                nfl_access_tuple_t* ptr_pro = from_nfl.content.ptr;
+                memcpy(ace_key_pub, ptr_pro->ace->pub, 64);
+                memcpy(ace_key_pri, ptr_pro->ace->pvt, 32);
 
                 send_ace_producer_interest();
                 ndn_app_run(handle); //success if back here
@@ -517,11 +517,11 @@ void *nfl_access(void* bootstrapTuple)
                 DPRINT("nfl-access(pid=%" PRIkernel_pid "): consumer access control\n",
                         thread_getpid());
                 
-                nfl_access_tuple_t* ptr = from_nfl.content.ptr;
-                memcpy(ace_key_pub, ptr->ace->pub, 64);
-                memcpy(ace_key_pri, ptr->ace->pvt, 32);
+                nfl_access_tuple_t* ptr_con = from_nfl.content.ptr;
+                memcpy(ace_key_pub, ptr_con->ace->pub, 64);
+                memcpy(ace_key_pri, ptr_con->ace->pvt, 32);
 
-                ndn_block_t* option = ptr->opt;
+                ndn_block_t* option = ptr_con->opt;
 
                 send_ace_consumer_interest(option);
                 ndn_app_run(handle);
@@ -534,7 +534,7 @@ void *nfl_access(void* bootstrapTuple)
 
     }
 
-    free(holder);
+    free(hold);
     ndn_app_destroy(handle);
     return NULL;
 }
