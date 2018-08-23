@@ -74,38 +74,6 @@ uint8_t* nfl_start_access_consumer(nfl_access_tuple_t* tuple)
     return ret;
 }
 
-int nfl_start_discovery(void)
-{
-    msg_t msg, reply;
-    msg.type = NFL_START_DISCOVERY;
-    msg.content.ptr = NULL;
-    msg_send_receive(&msg, &reply, nfl_pid); 
-
-    return true;
-}
-
-uint8_t* nfl_start_access_producer(nfl_access_tuple_t* tuple)
-{
-    msg_t msg, reply;
-    msg.type = NFL_START_ACCESS_PRODUCER;
-    msg.content.ptr = tuple;
-    msg_send_receive(&msg, &reply, nfl_pid); 
-
-    uint8_t* ret = reply.content.ptr;
-    return ret;
-}
-
-uint8_t* nfl_start_access_consumer(nfl_access_tuple_t* tuple)
-{
-    msg_t msg, reply;
-    msg.type = NFL_START_ACCESS_CONSUMER;
-    msg.content.ptr = tuple;
-    msg_send_receive(&msg, &reply, nfl_pid); 
-
-    uint8_t* ret = reply.content.ptr;
-    return ret;
-}
-
 int nfl_set_discovery_prefix(void* ptr)
 {  
     //ptr should indicate a uri
