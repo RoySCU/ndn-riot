@@ -4,6 +4,7 @@
 #include "nfl-constant.h"
 #include "nfl-block.h"
 #include "discovery.h"
+#include "access.h"
 
 /*
     this function is used for ndn-riot app send ipc message to NFL, to start bootstrap 
@@ -27,9 +28,15 @@ nfl_bootstrap_tuple_t* nfl_extract_bootstrap_tuple(void);
 
 int nfl_start_discovery(void);
 
+uint8_t* nfl_start_access_producer(nfl_access_tuple_t* tuple);
+
+uint8_t* nfl_start_access_consumer(nfl_access_tuple_t* tuple);
+
 int nfl_set_discovery_prefix(void* ptr);
 
 int nfl_init_discovery(void);
+
+int nfl_init_access(void);
 
 ndn_block_t* nfl_start_discovery_query(nfl_discovery_tuple_t* tuple);
 

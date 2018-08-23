@@ -27,6 +27,11 @@ typedef struct nfl_discovery_tuple {
     ndn_block_t* service;       
 } nfl_discovery_tuple_t;
 
+typedef struct nfl_access_tuple {
+    nfl_key_pair_t* ace;
+    ndn_block_t* opt;
+} nfl_access_tuple_t;
+
 #ifdef __cplusplus
 }
 #endif
