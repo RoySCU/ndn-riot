@@ -36,16 +36,19 @@ static char _stack[NFL_STACK_SIZE];
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
 
 kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
-char bootstrap_stack[THREAD_STACKSIZE_MAIN];
+char* bootstrap_stack = NULL;
+//char bootstrap_stack[THREAD_STACKSIZE_MAIN];
 
 kernel_pid_t nfl_discovery_pid = KERNEL_PID_UNDEF;
-char discovery_stack[THREAD_STACKSIZE_MAIN];
+char* discovery_stack = NULL;
+//char discovery_stack[THREAD_STACKSIZE_MAIN];
 nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
 nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
 nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
 
 kernel_pid_t nfl_access_pid = KERNEL_PID_UNDEF;
-char access_stack[THREAD_STACKSIZE_MAIN];
+char* access_stack = NULL;
+//char access_stack[THREAD_STACKSIZE_MAIN];
 
 //below are the tables and tuples NFL thread need to maintain
 static nfl_bootstrap_tuple_t bootstrapTuple;
@@ -57,6 +60,9 @@ static int _start_bootstrap(void* ptr)
     //assign value
     msg_t _send, _reply;
     _reply.content.ptr = NULL;
+
+    bootstrap_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
+
     nfl_bootstrap_pid = thread_create(bootstrap_stack, sizeof(bootstrap_stack),
                             THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_bootstrap, ptr, "nfl-bootstrap");
     //this thread directly registerd on ndn core thread as a application
@@ -97,6 +103,7 @@ static int _start_bootstrap(void* ptr)
         return true;
     }
     
+    free(bootstrap_stack);
     return false;
 }
 
@@ -121,7 +128,7 @@ static int _init_access(void)
          DEBUG("NFL: haven't bootstrapped yet\n");
          return false;
     }
-
+    access_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
     nfl_access_pid = thread_create(access_stack, sizeof(access_stack),
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_access, &bootstrapTuple,
                         "nfl-access");
@@ -139,7 +146,7 @@ void* _start_access(msg_t* ptr)
     _send.type = ptr->type;
 
     msg_send_receive(&_send, &_reply, nfl_access_pid);
-
+    free(access_stack);
     return _reply.content.ptr;
 }
 
@@ -184,7 +191,7 @@ static int _init_discovery(void)
          DEBUG("NFL: haven't bootstrapped yet\n");
          return false;
     }
-
+    discovery_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
     nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, &bootstrapTuple,
                         "nfl-discovery");
