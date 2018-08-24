@@ -209,12 +209,12 @@ static int on_producer_ace(ndn_block_t* interest, ndn_block_t* data)
                 curve = uECC_secp160r1();
             #endif
 
-            uint8_t ace_controller[64] = {0};
+            uint8_t* ace_controller = (uint8_t*)malloc(64);
             const uint8_t* ptr = buf;
             memcpy(ace_controller, ptr, 64);
             uECC_shared_secret(ace_controller, ace_key_pri, acehmac_pro, curve);
             DPRINT("producer-ace: control application processed\n");
-
+            free(ace_controller);
             to_nfl.content.ptr = &acehmac_pro;
             msg_reply(&from_nfl, &to_nfl);
             return NDN_APP_STOP;  
@@ -263,7 +263,7 @@ static int send_ace_producer_interest(void)
     sn = ndn_name_append(&sn->block, ace_key_pub, sizeof(ace_key_pub));
 
     /* prepare the signature */
-    uint8_t buf_sinfo[5]; 
+    uint8_t* buf_sinfo = (uint8_t*)malloc(5); 
     buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
     ndn_block_put_var_number(3, buf_sinfo + 1, 5 - 1);
 
@@ -276,7 +276,7 @@ static int send_ace_producer_interest(void)
     sn = ndn_name_append(&sn->block, buf_sinfo, 5); 
 
     //making and append ECDSA signature by CKpri
-    uint8_t buf_sibs[66]; //64 bytes for the value, 2 bytes for header 
+    uint8_t* buf_sibs = (uint8_t*)malloc(66); //64 bytes for the value, 2 bytes for header 
     ndn_make_signature(com_key_pri, &sn->block, buf_sibs);
     sn = ndn_name_append(&sn->block, buf_sibs, 66);  //from what part we sign?
 
@@ -296,6 +296,8 @@ static int send_ace_producer_interest(void)
         return NDN_APP_ERROR;
     }
 
+    free(buf_sinfo);
+    free(buf_sibs);
     return NDN_APP_CONTINUE;
 }
 
@@ -346,29 +348,34 @@ static int on_consumer_ace(ndn_block_t* interest, ndn_block_t* data)
                 curve = uECC_secp160r1();
             #endif
 
-            uint8_t ace_controller[64] = {0};
+            uint8_t* ace_controller = (uint8_t*)malloc(64);
             const uint8_t* ptr = buf;
             memcpy(ace_controller, ptr, 64);
             putchar('\n');
             uECC_shared_secret(ace_controller, ace_key_pri, acehmac_con, curve);
+            free(ace_controller);
             ptr = NULL;
             buf += 64;
             len -= 64;
 
             //get the encypted seed
-            uint8_t encypted[32] = {0};
-            uint8_t decrypted_first[32] = {0};
-            uint8_t decrypted_second[32] = {0};
-            memcpy(encypted, buf, 32);
+            uint8_t* encrypted = (uint8_t*)malloc(32);
+            uint8_t* decrypted_first = (uint8_t*)malloc(32);
+            uint8_t* decrypted_second = (uint8_t*)malloc(32);
+            memcpy(encrypted, buf, 32);
             
             cipher_t cipher;
-            uint8_t key_1[16] = {0};
-            uint8_t key_2[16] = {0};
+            uint8_t* key_1 = (uint8_t*)malloc(16);
+            uint8_t* key_2 = (uint8_t*)malloc(16);
+
+            for(int i = 0; i < 16; ++i) key_1[i] = 0;
+            for(int j = 0; j < 16; ++j) key_1[j] = 0;                        
+
             memcpy(key_1, acehmac_con, 16);
             memcpy(key_2, acehmac_con + 16, 16);
 
             cipher_init(&cipher, CIPHER_AES_128, key_2, 16);
-            cipher_decrypt_cbc(&cipher, TEST_1_IV, encypted, 32, decrypted_first);
+            cipher_decrypt_cbc(&cipher, TEST_1_IV, encrypted, 32, decrypted_first);
 
             cipher_init(&cipher, CIPHER_AES_128, key_1, 16);
             cipher_decrypt_cbc(&cipher, TEST_1_IV, decrypted_first,
@@ -381,6 +388,13 @@ static int on_consumer_ace(ndn_block_t* interest, ndn_block_t* data)
             
             to_nfl.content.ptr = &producer_key;
             msg_reply(&from_nfl, &to_nfl);
+
+            free(encrypted);
+            free(decrypted_first);
+            free(decrypted_second);
+            free(key_1);
+            free(key_2);
+
             return NDN_APP_STOP;  
  
     }
@@ -414,7 +428,7 @@ static int send_ace_consumer_interest(ndn_block_t* option)
     sn = ndn_name_append(&sn->block, ace_key_pub, sizeof(ace_key_pub));
 
     /* prepare the signature */
-    uint8_t buf_sinfo[5]; 
+    uint8_t* buf_sinfo = (uint8_t*)malloc(5);
     buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
     ndn_block_put_var_number(3, buf_sinfo + 1, 5 - 1);
 
@@ -427,7 +441,7 @@ static int send_ace_consumer_interest(ndn_block_t* option)
     sn = ndn_name_append(&sn->block, buf_sinfo, 5); 
 
     //making and append ECDSA signature by CKpri
-    uint8_t buf_sibs[66]; //64 bytes for the value, 2 bytes for header 
+    uint8_t* buf_sibs = (uint8_t*)malloc(66); //64 bytes for the value, 2 bytes for header 
     ndn_make_signature(com_key_pri, &sn->block, buf_sibs);
     sn = ndn_name_append(&sn->block, buf_sibs, 66);  //from what part we sign?
 
@@ -447,6 +461,8 @@ static int send_ace_consumer_interest(ndn_block_t* option)
         return NDN_APP_ERROR;
     }
 
+    free(buf_sinfo);
+    free(buf_sibs);
     return NDN_APP_CONTINUE;
 }
 
