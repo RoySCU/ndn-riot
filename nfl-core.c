@@ -27,11 +27,11 @@
 #define NFL_PRIO              (THREAD_PRIORITY_MAIN - 3)
 #define NFL_MSG_QUEUE_SIZE    (8U)
 
-#if ENABLE_DEBUG
-static char _stack[NFL_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRINTF];
-#else
+//#if ENABLE_DEBUG
+//static char _stack[NFL_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRINTF];
+//#else
 static char _stack[NFL_STACK_SIZE];
-#endif
+//#endif
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
 
