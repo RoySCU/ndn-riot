@@ -63,7 +63,7 @@ static int _start_bootstrap(void* ptr)
 
     bootstrap_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
 
-    nfl_bootstrap_pid = thread_create(bootstrap_stack, sizeof(bootstrap_stack),
+    nfl_bootstrap_pid = thread_create(bootstrap_stack, THREAD_STACKSIZE_MAIN,
                             THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_bootstrap, ptr, "nfl-bootstrap");
     //this thread directly registerd on ndn core thread as a application
     _send.content.ptr = _reply.content.ptr;
@@ -129,7 +129,7 @@ static int _init_access(void)
          return false;
     }
     access_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
-    nfl_access_pid = thread_create(access_stack, sizeof(access_stack),
+    nfl_access_pid = thread_create(access_stack, THREAD_STACKSIZE_MAIN,
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_access, &bootstrapTuple,
                         "nfl-access");
 
@@ -192,7 +192,7 @@ static int _init_discovery(void)
          return false;
     }
     discovery_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
-    nfl_discovery_pid = thread_create(discovery_stack, sizeof(discovery_stack),
+    nfl_discovery_pid = thread_create(discovery_stack, THREAD_STACKSIZE_MAIN,
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, &bootstrapTuple,
                         "nfl-discovery");
     return true;
