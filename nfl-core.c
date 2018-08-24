@@ -23,7 +23,7 @@
 #include <timex.h>
 #include <xtimer.h>
 
-#define NFL_STACK_SIZE        (THREAD_STACKSIZE_DEFAULT)
+#define NFL_STACK_SIZE        (THREAD_STACKSIZE_DEFAULT - THREAD_STACKSIZE_TINY)
 #define NFL_PRIO              (THREAD_PRIORITY_MAIN - 3)
 #define NFL_MSG_QUEUE_SIZE    (8U)
 
@@ -35,18 +35,18 @@ static char _stack[NFL_STACK_SIZE];
 
 kernel_pid_t nfl_pid = KERNEL_PID_UNDEF;
 
-kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
+extern kernel_pid_t nfl_bootstrap_pid = KERNEL_PID_UNDEF;
 char* bootstrap_stack = NULL;
 //char bootstrap_stack[THREAD_STACKSIZE_MAIN];
 
-kernel_pid_t nfl_discovery_pid = KERNEL_PID_UNDEF;
+extern kernel_pid_t nfl_discovery_pid = KERNEL_PID_UNDEF;
 char* discovery_stack = NULL;
 //char discovery_stack[THREAD_STACKSIZE_MAIN];
 nfl_subprefix_entry_t _subprefix_table[NFL_SUBPREFIX_ENTRIES_NUMOF];
 nfl_service_entry_t _service_table[NFL_SERVICE_ENTRIES_NUMOF];
 nfl_identity_entry_t _identity_table[NFL_IDENTITY_ENTRIES_NUMOF];
 
-kernel_pid_t nfl_access_pid = KERNEL_PID_UNDEF;
+extern kernel_pid_t nfl_access_pid = KERNEL_PID_UNDEF;
 char* access_stack = NULL;
 //char access_stack[THREAD_STACKSIZE_MAIN];
 
