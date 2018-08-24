@@ -191,8 +191,8 @@ static int _init_discovery(void)
          DEBUG("NFL: haven't bootstrapped yet\n");
          return false;
     }
-    discovery_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
-    nfl_discovery_pid = thread_create(discovery_stack, THREAD_STACKSIZE_MAIN,
+    discovery_stack = (char*)malloc(THREAD_STACKSIZE_MEDIUM);
+    nfl_discovery_pid = thread_create(discovery_stack, THREAD_STACKSIZE_MEDIUM,
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, &bootstrapTuple,
                         "nfl-discovery");
     return true;
