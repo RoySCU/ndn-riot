@@ -576,7 +576,7 @@ void *nfl_discovery(void* bootstrapTuple)
                 to_nfl.content.ptr = NULL; //to invoke the nfl caller process
                 msg_reply(&from_nfl, &to_nfl);//this should be the last operation in while loop 
             
-
+                xtimer_sleep(20);
                 ndn_app_run(handle); 
 
                 /* discovery thread will stall here until a terminate instruction from NFL sent in */
