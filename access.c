@@ -510,8 +510,10 @@ void *nfl_access(void* bootstrapTuple)
     msg_t msg_q[_MSG_QUEUE_SIZE];
     msg_init_queue(msg_q, _MSG_QUEUE_SIZE);
 
+    int shouldStop = false;
+
     /* start event loop */
-    while (1) {
+    while (!shouldStop) {
         msg_receive(&from_nfl);
 
         switch (from_nfl.type) {
@@ -526,6 +528,7 @@ void *nfl_access(void* bootstrapTuple)
 
                 send_ace_producer_interest();
                 ndn_app_run(handle); //success if back here
+                shouldStop = true;
 
                 break;
 
@@ -541,6 +544,7 @@ void *nfl_access(void* bootstrapTuple)
 
                 send_ace_consumer_interest(option);
                 ndn_app_run(handle);
+                shouldStop = true;
 
                 break;
 
