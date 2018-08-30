@@ -92,7 +92,7 @@ static int _start_bootstrap(void* ptr)
     bootstrapTuple.home_prefix.len = buffer->home_prefix.len;
 
     if(bootstrapTuple.m_cert.buf){
-        DEBUG("NFL: bootstrap success\n");
+        DEBUG("nfl: bootstrap success\n");
 
         ndn_block_t name;
         ndn_data_get_name(&bootstrapTuple.m_cert, &name);
@@ -118,14 +118,14 @@ static int _start_discovery(void)
     _send.type = NFL_START_DISCOVERY;
     msg_send_receive(&_send, &_reply, nfl_discovery_pid);
 
-    DEBUG("NFL: Service Discovery start\n");
+    DEBUG("nfl: Service Discovery start\n");
     return true;
 }
 
 static int _init_access(void)
 {
     if(bootstrapTuple.m_cert.buf == NULL){
-         DEBUG("NFL: haven't bootstrapped yet\n");
+         DEBUG("nfl: haven't bootstrapped yet\n");
          return false;
     }
     access_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
@@ -188,11 +188,11 @@ static int _init_discovery(void)
 {
     //pass bootstrapTuple to discovery scenario
     if(bootstrapTuple.m_cert.buf == NULL){
-         DEBUG("NFL: haven't bootstrapped yet\n");
+         DEBUG("nfl: haven't bootstrapped yet\n");
          return false;
     }
-    discovery_stack = (char*)malloc(THREAD_STACKSIZE_DEFAULT * 3 / 4);
-    nfl_discovery_pid = thread_create(discovery_stack, THREAD_STACKSIZE_DEFAULT * 3 / 4,
+    discovery_stack = (char*)malloc(THREAD_STACKSIZE_DEFAULT);
+    nfl_discovery_pid = thread_create(discovery_stack, THREAD_STACKSIZE_DEFAULT,
                         THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST, nfl_discovery, &bootstrapTuple,
                         "nfl-discovery");
     return true;
@@ -214,7 +214,7 @@ static void *_event_loop(void *args)
 
         switch (msg.type) {
             case NFL_START_BOOTSTRAP:
-                DEBUG("NFL: START_BOOTSTRAP message received from pid %"
+                DEBUG("nfl: START_BOOTSTRAP message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
                 
                 if(_start_bootstrap(msg.content.ptr)){
@@ -227,7 +227,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_START_DISCOVERY:
-                DEBUG("NFL: START_DISCOVERY message received from pid %"
+                DEBUG("nfl: START_DISCOVERY message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 _start_discovery();
@@ -237,7 +237,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_START_ACCESS_PRODUCER:
-                DEBUG("NFL: START_ACCESS_PRODUCER message received from pid %"
+                DEBUG("nfl: START_ACCESS_PRODUCER message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 reply.content.ptr = _start_access(&msg); 
@@ -246,7 +246,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_START_ACCESS_CONSUMER:
-                DEBUG("NFL: START_ACCESS_CONSUMER message received from pid %"
+                DEBUG("nfl: START_ACCESS_CONSUMER message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 reply.content.ptr = _start_access(&msg); 
@@ -255,7 +255,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_START_DISCOVERY_QUERY:
-                DEBUG("NFL: START_DISCOVERY_QUERY message received from pid %"
+                DEBUG("nfl: START_DISCOVERY_QUERY message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 reply.content.ptr = _start_discovery_query(msg.content.ptr);
@@ -264,7 +264,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_INIT_DISCOVERY:
-                DEBUG("NFL: INIT_DISCOVERY message received from pid %"
+                DEBUG("nfl: INIT_DISCOVERY message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
                                
                 _init_discovery();
@@ -274,7 +274,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_INIT_ACCESS:
-                DEBUG("NFL: INIT_ACCESS message received from pid %"
+                DEBUG("nfl: INIT_ACCESS message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
                                
                 _init_access();
@@ -284,7 +284,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_SET_DISCOVERY_PREFIX:
-                DEBUG("NFL: SET_DISCOVERY_PREFIX message received from pid %"
+                DEBUG("nfl: SET_DISCOVERY_PREFIX message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 //ptr should point to a string
@@ -295,7 +295,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_EXTRACT_BOOTSTRAP_TUPLE:
-                DEBUG("NFL: EXTRACT_BOOTSTRAP_TUPLE message received from pid %"
+                DEBUG("nfl: EXTRACT_BOOTSTRAP_TUPLE message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 if(bootstrapTuple.m_cert.buf) reply.content.ptr = &bootstrapTuple;
@@ -305,7 +305,7 @@ static void *_event_loop(void *args)
                 break;
 
             case NFL_EXTRACT_DISCOVERY_LIST:
-                DEBUG("NFL: EXTRACT_DISCOVERY_LIST message received from pid %"
+                DEBUG("nfl: EXTRACT_DISCOVERY_LIST message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
 
                 //extract the tuple
@@ -329,7 +329,7 @@ kernel_pid_t nfl_init(void)
         /* start UDP thread */
         nfl_pid = thread_create(
             _stack, sizeof(_stack), NFL_PRIO,
-            THREAD_CREATE_STACKTEST, _event_loop, NULL, "NFL");
+            THREAD_CREATE_STACKTEST, _event_loop, NULL, "nfl");
     }
     return nfl_pid;
 }
