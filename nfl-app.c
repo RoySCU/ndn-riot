@@ -7,9 +7,7 @@
 #include "nfl-app.h"
 #include "nfl-constant.h"
 #include <debug.h>
-/*
-    this function is used for ndn-riot app send ipc message to NFL, to start bootstrap 
-*/
+
 
 nfl_bootstrap_tuple_t* nfl_start_bootstrap(nfl_key_pair_t* pair)
 {
