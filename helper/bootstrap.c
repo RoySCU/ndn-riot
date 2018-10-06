@@ -86,13 +86,6 @@ static int certificate_timeout(ndn_block_t* interest);
 
 static int on_certificate_response(ndn_block_t* interest, ndn_block_t* data)
 {
-    /*
-    Incoming Packet Format
-    Name: I2/version
-    Content: BKpuk
-    Signature: sign by AKpri
-    */
-
     ndn_block_t name1;
     (void)interest;
 
@@ -192,18 +185,6 @@ static int ndn_app_express_certificate_request(void)
 
 static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
 {
-    /* 
-    Incoming Packet Format
-    Name: echo of I1->append /version
-    Content: token
-             BKpub digest
-             anchor certificate
-                               Name:  anchor prefix
-                               Content： AKpub
-                               Signature: AKpri
-    Signature: AKpri
-    */
-
     (void)interest;
     ndn_block_t name;
     int r = ndn_data_get_name(data, &name); 
@@ -219,7 +200,7 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     uint32_t len; 
     const uint8_t* buf = content.buf;  //receive the pointer from the content type
     len = content.len; //receive the content length
-    //DPRINT("content TLV length: %u\n", len);
+
     //skip content type
     buf += 1;
     len -= 1;
@@ -240,15 +221,16 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     memcpy(bit_2, buf, 32); buf += 32; len -= 32;
 
     /*
-    Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
-    Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
-    A = 5^4 mod 23 = 4
-    Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
-    B = 5^3 mod 23 = 10
-    Alice computes s = B^a mod p
-    s = 10^4 mod 23 = 18
-    Bob computes s = A^b mod p
-    s = 4^3 mod 23 = 18
+    Diffie Hellman
+        Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
+        Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
+        A = 5^4 mod 23 = 4
+        Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
+        B = 5^3 mod 23 = 10
+        Alice computes s = B^a mod p
+        s = 10^4 mod 23 = 18
+        Bob computes s = A^b mod p
+        s = 4^3 mod 23 = 18
     */
 
     shared[0] = Montgomery(bit_2[0], secrete_1[0], dh_p);
@@ -264,8 +246,6 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     anchor_global.buf = buf;
     anchor_global.len = len;
    
-    DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate length: %d\n",
-                                                    handle->id, anchor_global.len);
     //get certificate name - home prefix
     ndn_data_get_name(&anchor_global, &home_prefix);
     DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid ") anchor certificate name =", handle->id);
@@ -275,8 +255,7 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     //then we need verify anchor's signature
     ndn_block_t AKpub;
     ndn_data_get_content(&anchor_global, &AKpub);
-    DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid ") anchor public key TLV block length: %d\n",
-                                                                     handle->id, AKpub.len);
+
     memcpy(&anchor_key_pub, AKpub.buf + 2, 64);//skip the content and pubkey TLV header
 
     r = ndn_data_verify_signature(&anchor_global, anchor_key_pub, sizeof(anchor_key_pub));
@@ -314,21 +293,22 @@ static int ndn_app_express_bootstrapping_request(void)
     secrete_1[3]  = random_uint32();
 
     /*
-    Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
-    Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
-    A = 5^4 mod 23 = 4
-    Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
-    B = 5^3 mod 23 = 10
-    Alice computes s = B^a mod p
-    s = 10^4 mod 23 = 18
-    Bob computes s = A^b mod p
-    s = 4^3 mod 23 = 18
+        Alice and Bob agree to use a modulus p = 23 and base g = 5 (which is a primitive root modulo 23).
+        Alice chooses a secret integer a = 4, then sends Bob A = g^a mod p
+        A = 5^4 mod 23 = 4
+        Bob chooses a secret integer b = 3, then sends Alice B = g^b mod p
+        B = 5^3 mod 23 = 10
+        Alice computes s = B^a mod p
+        s = 10^4 mod 23 = 18
+        Bob computes s = A^b mod p
+        s = 4^3 mod 23 = 18
     */
 
     bit_1[0] = Montgomery(dh_g, secrete_1[0], dh_p);
     bit_1[1] = Montgomery(dh_g, secrete_1[1], dh_p);
     bit_1[2] = Montgomery(dh_g, secrete_1[2], dh_p);
     bit_1[3] = Montgomery(dh_g, secrete_1[3], dh_p);
+    
     //append the bit_1
     uint8_t* buf_dh = (uint8_t*)malloc(8 * 4);
     memcpy(buf_dh, bit_1, 32);

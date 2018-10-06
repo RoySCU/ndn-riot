@@ -71,15 +71,16 @@ int ndn_helper_discovery_register_prefix(void* ptr)
     return true;
 }
 
-ndn_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple)
+ndn_shared_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple)
 {
     msg_t msg, reply;
+    ndn_shared_block_t* ptr;
     msg.type = NDN_HELPER_DISCOVERY_QUERY;
     msg.content.ptr = tuple;
     msg_send_receive(&msg, &reply, ndn_helper_pid); 
 
     if(reply.content.ptr) {
-        ndn_block_t* ptr = reply.content.ptr;
+        ptr = (ndn_shared_block_t*)reply.content.ptr;
         return ptr;
     }
 

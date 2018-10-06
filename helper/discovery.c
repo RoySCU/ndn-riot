@@ -299,6 +299,10 @@ static int on_query(ndn_block_t* interest)
     }
     ndn_block_t content = { buffer, len};
 
+    putchar('\n');
+    ndn_name_print(&content);
+    putchar('\n');putchar('\n');
+
     /* send back data */
     ndn_metainfo_t meta = { NDN_CONTENT_TYPE_BLOB, -1 };
     ndn_shared_block_t* back = ndn_name_append_uint8(&in, 2);
@@ -341,7 +345,9 @@ static int on_query_response(ndn_block_t* interest, ndn_block_t* data){
     ndn_name_print(&name);
     putchar('\n');
     
-    to_helper.content.ptr = &content;
+    ndn_shared_block_t* ptr = ndn_shared_block_create_by_move(&content);
+
+    to_helper.content.ptr = ptr;
     msg_reply(&from_helper, &to_helper); //send response to ndn
 
     return NDN_APP_CONTINUE;
@@ -394,20 +400,6 @@ static int on_broadcast(ndn_block_t* interest)
     putchar('\n');
 
     ndn_discovery_collect(&in);
-
-    
-    /* expriment on query 
-    uint32_t lifetime = 60000; // 1 minute
-    ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix, &_identity_table[0].id);
-    toquery = ndn_name_append_from_name(&toquery->block, &_identity_table[0].list[0].avail);
-    const char* query = "/query/v3";
-    ndn_shared_block_t* str = ndn_name_from_uri(query, strlen(query));
-    toquery = ndn_name_append_from_name(&toquery->block, &str->block);    
-    ndn_app_express_interest(handle, &toquery->block, NULL, lifetime, on_query_response, NULL);
-    DEBUG("ndn-helper-discovery(pid=%" PRIkernel_pid "): query, name =", handle->id);
-    ndn_name_print(&toquery->block);
-    putchar('\n');
-    */
 
     return NDN_APP_CONTINUE;
 }
@@ -518,7 +510,7 @@ void *ndn_helper_discovery(void* bootstrapTuple)
                         thread_getpid());
 
                 /* msg should contain a <id, service> tuple */
-                lifetime = 4000; // 2 seconds
+                lifetime = 8000; // 2 seconds
                 ndn_discovery_t* tuple = from_helper.content.ptr;                    
                 ndn_shared_block_t* toquery = ndn_name_append_from_name(&home_prefix,
                                              tuple->identity);

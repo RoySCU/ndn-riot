@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include "../encoding/block.h"
+#include "../encoding/shared-block.h"
 #include "helper-constants.h"
 #include "helper-block.h"
 #include "discovery.h"
@@ -112,7 +113,7 @@ int ndn_helper_access_terminate(void);
 /**
  * @brief  Sends a discovery query request to helper thread. 
  *         Call this funtion before init() will incur errors. 
- *         Caller must make copy
+ *         Caller release the return shared block
  * 
  * @param[in] Discovery tuple ptr 
  * 
@@ -120,7 +121,7 @@ int ndn_helper_access_terminate(void);
  * @return NULL, if timeout.
  * @return NULL, if error.
  */
-ndn_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple);
+ndn_shared_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple);
 
 
 #ifdef __cplusplus
