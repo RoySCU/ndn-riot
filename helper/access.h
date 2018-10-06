@@ -1,7 +1,14 @@
 #ifndef NDN_ACCESS_H_
 #define NDN_ACCESS_H_
 
-#include "nfl-block.h"
+
+#include "../encoding/block.h"
+#include "../encoding/ndn-constants.h"
+#include "../encoding/key.h"
+#include <net/gnrc/pktbuf.h>
+
+#include <inttypes.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,7 +23,7 @@ extern "C" {
 #define ACE_PRODUCER_USER_DEFINED 7
 #define ACE_CONSUMER_USER_DEFINED 8
 
-void *nfl_access(void* bootstrapTuple);
+void *ndn_helper_access(void* bootstrapTuple);
 
 
 #ifdef __cplusplus

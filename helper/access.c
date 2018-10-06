@@ -8,17 +8,19 @@
 #include "crypto/modes/cbc.h"
 #include "uECC.h"
 #include <hashes/sha256.h>
-#include "app.h"
-#include "ndn.h"
-#include "encoding/name.h"
-#include "encoding/interest.h"
-#include "encoding/data.h"
-#include "msg-type.h"
+#include "../app.h"
+#include "../ndn.h"
+#include "../encoding/name.h"
+#include "../encoding/interest.h"
+#include "../encoding/data.h"
+#include "helper-constants.h"
 
-#include "nfl-block.h"
+#include "../encoding/block.h"
+#include "../encoding/shared-block.h"
 #include "access.h"
-#include "nfl-constant.h"
-#include "nfl-core.h"
+#include "../encoding/ndn-constants.h"
+#include "helper-block.h"
+
 #define DPRINT(...) printf(__VA_ARGS__)
 #define _MSG_QUEUE_SIZE    (8U)
 
@@ -69,87 +71,10 @@ static uint8_t TEST_1_IV[16] = {
 
 static ndn_block_t home_prefix;
 static ndn_block_t identity;
-static msg_t to_nfl, from_nfl;
+static msg_t to_helper, from_helper;
 static unsigned char acehmac_pro[32] = {0};
 static unsigned char acehmac_con[32] = {0};
 static uint8_t producer_key[32] = {0};
-
-#ifndef FEATURE_PERIPH_HWRNG
-typedef struct uECC_SHA256_HashContext {
-    uECC_HashContext uECC;
-    sha256_context_t ctx;
-} uECC_SHA256_HashContext;
-static void _init_sha256(const uECC_HashContext *base)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_init(&context->ctx);
-}
-
-static void _update_sha256(const uECC_HashContext *base,
-                           const uint8_t *message,
-                           unsigned message_size)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_update(&context->ctx, message, message_size);
-}
-
-static void _finish_sha256(const uECC_HashContext *base, uint8_t *hash_result)
-{
-    uECC_SHA256_HashContext *context = (uECC_SHA256_HashContext*)base;
-    sha256_final(&context->ctx, hash_result);
-}
-#endif
-
-static int ndn_make_signature(uint8_t* pri_key, ndn_block_t* seg, uint8_t* buf_sig)
-{
-    uint32_t num;
-    buf_sig[0] = NDN_TLV_SIGNATURE_VALUE;
-    ndn_block_put_var_number(64, buf_sig + 1, 66 -1);
-    int gl = ndn_block_get_var_number(seg->buf + 1, seg->len - 1, &num);
-    uint8_t h[32] = {0}; 
-
-    sha256(seg->buf + 1 + gl, seg->len - 1 - gl, h);
-    uECC_Curve curve = uECC_secp160r1();
-
-#ifndef FEATURE_PERIPH_HWRNG
-    // allocate memory on heap to avoid stack overflow
-    uint8_t *tmp = (uint8_t*)malloc(32 + 32 + 64);
-    if (tmp == NULL) {
-        DPRINT("producer-ace: Error during signing interest\n");
-        return -1;
-    }
-
-    uECC_SHA256_HashContext *ctx = (uECC_SHA256_HashContext*)
-                malloc(sizeof(uECC_SHA256_HashContext));
-    if (ctx == NULL) {
-        free(tmp);
-        DPRINT("producer-ace: Error during signing interest\n");
-        return -1;
-    }
-       
-    ctx->uECC.init_hash = &_init_sha256;
-    ctx->uECC.update_hash = &_update_sha256;
-    ctx->uECC.finish_hash = &_finish_sha256;
-    ctx->uECC.block_size = 64;
-    ctx->uECC.result_size = 32;
-    ctx->uECC.tmp = tmp;
-    int res = uECC_sign_deterministic(pri_key, h, sizeof(h), &ctx->uECC,
-                                              buf_sig + 1 + gl, curve); 
-    free(ctx);
-    free(tmp);
-    if (res == 0) {
-        DPRINT("producer-ace: Error during signing interest\n");
-        return -1;
-    }
-#else
-    res = uECC_sign(pri_key, h, sizeof(h), buf_sig + 1 + gl, curve);
-    if (res == 0) {
-        return -1;
-    }  
-    return 0; //success
-#endif
-    return 0; //success
-}
 
 static int on_producer_ace(ndn_block_t* interest, ndn_block_t* data)
 {
@@ -204,13 +129,13 @@ static int on_producer_ace(ndn_block_t* interest, ndn_block_t* data)
             uECC_shared_secret(ace_controller, ace_key_pri, acehmac_pro, curve);
             DPRINT("producer-ace: control application processed\n");
             free(ace_controller);
-            to_nfl.content.ptr = &acehmac_pro;
-            msg_reply(&from_nfl, &to_nfl);
+            to_helper.content.ptr = &acehmac_pro;
+            msg_reply(&from_helper, &to_helper);
             return NDN_APP_STOP;  
  
     }
 
-    to_nfl.content.ptr = NULL;
+    to_helper.content.ptr = NULL;
     return NDN_APP_STOP;  
 }
 
@@ -220,9 +145,13 @@ static int on_timeout(ndn_block_t* interest)
     int r = ndn_interest_get_name(interest, &name);
     assert(r == 0);
 
-    DPRINT("nfl-access (pid=%" PRIkernel_pid "): interest timeout, name =",
+    DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): interest timeout, name =",
            handle->id);
+    ndn_name_print(&name);
+    putchar('\n');
 
+    to_helper.content.ptr = NULL;
+    msg_reply(&from_helper, &to_helper);
     return NDN_APP_STOP;  // block forever...
 }
 
@@ -251,24 +180,6 @@ static int send_ace_producer_interest(void)
 
     sn = ndn_name_append(&sn->block, ace_key_pub, sizeof(ace_key_pub));
 
-    /* prepare the signature */
-    uint8_t* buf_sinfo = (uint8_t*)malloc(5); 
-    buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
-    ndn_block_put_var_number(3, buf_sinfo + 1, 5 - 1);
-
-    // Write signature type (true signatureinfo content)
-    buf_sinfo[2] = NDN_TLV_SIGNATURE_TYPE;
-    ndn_block_put_var_number(1, buf_sinfo + 3, 5 - 3);
-    buf_sinfo[4] = NDN_SIG_TYPE_ECDSA_SHA256;
-
-    //append the signatureinfo
-    sn = ndn_name_append(&sn->block, buf_sinfo, 5); 
-
-    //making and append ECDSA signature by CKpri
-    uint8_t* buf_sibs = (uint8_t*)malloc(66); //64 bytes for the value, 2 bytes for header 
-    ndn_make_signature(com_key_pri, &sn->block, buf_sibs);
-    sn = ndn_name_append(&sn->block, buf_sibs, 66);  //from what part we sign?
-
     uint32_t lifetime = 3000;  // 1 sec
 
     DPRINT("producer-ace (pid=%" PRIkernel_pid "): express interest, name =",
@@ -276,8 +187,10 @@ static int send_ace_producer_interest(void)
     ndn_name_print(&sn->block);
     putchar('\n');
 
-    int r = ndn_app_express_interest(handle, &sn->block, NULL, lifetime,
-                                     on_producer_ace, on_timeout);
+    int r = ndn_app_express_signed_interest(handle, &sn->block, NULL, lifetime,
+                                            NDN_SIG_TYPE_ECDSA_SHA256, com_key_pri, 
+                                            sizeof(com_key_pri), on_producer_ace, 
+                                            on_timeout);                             
     ndn_shared_block_release(sn);
     if (r != 0) {
         DPRINT("producer-ace (pid=%" PRIkernel_pid "): failed to express interest\n",
@@ -285,8 +198,6 @@ static int send_ace_producer_interest(void)
         return NDN_APP_ERROR;
     }
 
-    free(buf_sinfo);
-    free(buf_sibs);
     return NDN_APP_CONTINUE;
 }
 
@@ -375,8 +286,8 @@ static int on_consumer_ace(ndn_block_t* interest, ndn_block_t* data)
 
             DPRINT("consumer-ace: application response processsed\n");
             
-            to_nfl.content.ptr = &producer_key;
-            msg_reply(&from_nfl, &to_nfl);
+            to_helper.content.ptr = &producer_key;
+            msg_reply(&from_helper, &to_helper);
 
             free(encrypted);
             free(decrypted_first);
@@ -388,7 +299,7 @@ static int on_consumer_ace(ndn_block_t* interest, ndn_block_t* data)
  
     }
     
-    to_nfl.content.ptr = NULL;
+    to_helper.content.ptr = NULL;
     return NDN_APP_STOP;
 }
 
@@ -416,56 +327,32 @@ static int send_ace_consumer_interest(ndn_block_t* option)
 
     sn = ndn_name_append(&sn->block, ace_key_pub, sizeof(ace_key_pub));
 
-    /* prepare the signature */
-    uint8_t* buf_sinfo = (uint8_t*)malloc(5);
-    buf_sinfo[0] = NDN_TLV_SIGNATURE_INFO;
-    ndn_block_put_var_number(3, buf_sinfo + 1, 5 - 1);
+    uint32_t lifetime = 3000; // 3 second
+    int r = ndn_app_express_signed_interest(handle, &sn->block, NULL, lifetime,
+                                            NDN_SIG_TYPE_ECDSA_SHA256, com_key_pri, 
+                                            sizeof(com_key_pri), on_consumer_ace, 
+                                            on_timeout);        
 
-    // Write signature type (true signatureinfo content)
-    buf_sinfo[2] = NDN_TLV_SIGNATURE_TYPE;
-    ndn_block_put_var_number(1, buf_sinfo + 3, 5 - 3);
-    buf_sinfo[4] = NDN_SIG_TYPE_ECDSA_SHA256;
-
-    //append the signatureinfo
-    sn = ndn_name_append(&sn->block, buf_sinfo, 5); 
-
-    //making and append ECDSA signature by CKpri
-    uint8_t* buf_sibs = (uint8_t*)malloc(66); //64 bytes for the value, 2 bytes for header 
-    ndn_make_signature(com_key_pri, &sn->block, buf_sibs);
-    sn = ndn_name_append(&sn->block, buf_sibs, 66);  //from what part we sign?
-
-    uint32_t lifetime = 3000;  // 1 sec
-
-    DPRINT("consumer-ace (pid=%" PRIkernel_pid "): express interest, name =",
-           handle->id);
-    ndn_name_print(&sn->block);
-    putchar('\n');
-
-    int r = ndn_app_express_interest(handle, &sn->block, NULL, lifetime,
-                                     on_consumer_ace, on_timeout);
     ndn_shared_block_release(sn);
     if (r != 0) {
         DPRINT("consumer-ace (pid=%" PRIkernel_pid "): failed to express interest\n",
                handle->id);
         return NDN_APP_ERROR;
     }
-
-    free(buf_sinfo);
-    free(buf_sibs);
     return NDN_APP_CONTINUE;
 }
 
-void *nfl_access(void* bootstrapTuple)
+void *ndn_helper_access(void* bootstrapTuple)
 {
     /* extract home prefix and identity name from bootstrapTuple */
-    nfl_bootstrap_tuple_t* tuple = bootstrapTuple;
+    ndn_bootstrap_t* tuple = bootstrapTuple;
 
     home_prefix = tuple->home_prefix;
     ndn_name_print(&home_prefix); putchar('\n');
 
 
     ndn_block_t cert_name;
-    ndn_data_get_name(&tuple->m_cert, &cert_name);
+    ndn_data_get_name(&tuple->certificate, &cert_name);
     ndn_name_print(&cert_name); putchar('\n');
 
 
@@ -473,24 +360,18 @@ void *nfl_access(void* bootstrapTuple)
     ndn_block_t host;
     ndn_name_get_component_from_block(&cert_name, home_len, &host);
                     
-    /* construct it in name TLV */    
-    uint8_t* hold = (uint8_t*)malloc(host.len + 4);
-    hold[0] = NDN_TLV_NAME;
-    ndn_block_put_var_number(host.len + 2, hold + 1, host.len + 4 - 1);
-    hold[2] = NDN_TLV_NAME_COMPONENT;
-    ndn_block_put_var_number(host.len, hold + 3, host.len + 4 - 3);
-    memcpy(hold + 4, host.buf, host.len);
-    identity.buf = hold;
-    identity.len = host.len + 4; 
-
-    DPRINT("nfl-access (pid=%" PRIkernel_pid "): identity name: ",
+    /* construct it in name TLV */
+    ndn_shared_block_t* identity_name = ndn_name_move_from_comp(&host);   
+    DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): identity name: ",
                thread_getpid());
-    ndn_name_print(&identity); 
+    ndn_name_print(&identity_name->block); 
     putchar('\n');
+
+    identity = identity_name->block;
 
     handle = ndn_app_create();
     if (handle == NULL) {
-        DPRINT("nfl-access  (pid=%" PRIkernel_pid "): cannot create app handle\n",
+        DPRINT("ndn-helper-access  (pid=%" PRIkernel_pid "): cannot create app handle\n",
                thread_getpid());
         return NULL;
     }
@@ -503,29 +384,29 @@ void *nfl_access(void* bootstrapTuple)
 
     /* start event loop */
     while (!shouldStop) {
-        msg_receive(&from_nfl);
+        msg_receive(&from_helper);
 
-        switch (from_nfl.type) {
-            case NFL_START_ACCESS_PRODUCER:
-                DPRINT("nfl-access(pid=%" PRIkernel_pid "): producer access control\n",
+        switch (from_helper.type) {
+            case NDN_HELPER_ACCESS_PRODUCER:
+                DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): producer access control\n",
                         thread_getpid());
 
                 /* initiate ace key pair */
-                nfl_access_tuple_t* ptr_pro = from_nfl.content.ptr;
+                ndn_access_t* ptr_pro = from_helper.content.ptr;
                 memcpy(ace_key_pub, ptr_pro->ace->pub, 64);
                 memcpy(ace_key_pri, ptr_pro->ace->pvt, 32);
 
                 send_ace_producer_interest();
                 ndn_app_run(handle); //success if back here
-                shouldStop = true;
+                //shouldStop = true;
 
                 break;
 
-            case NFL_START_ACCESS_CONSUMER:
-                DPRINT("nfl-access(pid=%" PRIkernel_pid "): consumer access control\n",
+            case NDN_HELPER_ACCESS_CONSUMER:
+                DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): consumer access control\n",
                         thread_getpid());
                 
-                nfl_access_tuple_t* ptr_con = from_nfl.content.ptr;
+                ndn_access_t* ptr_con = from_helper.content.ptr;
                 memcpy(ace_key_pub, ptr_con->ace->pub, 64);
                 memcpy(ace_key_pri, ptr_con->ace->pvt, 32);
 
@@ -533,8 +414,13 @@ void *nfl_access(void* bootstrapTuple)
 
                 send_ace_consumer_interest(option);
                 ndn_app_run(handle);
-                shouldStop = true;
+                //shouldStop = true;
+                break;
 
+            case NDN_HELPER_ACCESS_TERMINATE:
+                DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): access control terminate\n",
+                        thread_getpid());
+                shouldStop = true;
                 break;
 
             default:
@@ -542,8 +428,6 @@ void *nfl_access(void* bootstrapTuple)
         }
 
     }
-
-    free(hold);
     ndn_app_destroy(handle);
     return NULL;
 }

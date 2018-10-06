@@ -587,6 +587,7 @@ int ndn_name_wire_decode(ndn_block_t* buf, ndn_name_t* name){
     int len = ndn_name_get_size_from_block(buf);
 
     name->comps = malloc(len * sizeof(ndn_block_t));
+    name->size = len;
 
     for(int i = 0; i < len; ++i) 
         ndn_name_get_component_from_block(buf, i, &name->comps[i]);
@@ -594,4 +595,26 @@ int ndn_name_wire_decode(ndn_block_t* buf, ndn_name_t* name){
     return true;
 }
 
+//this function would free input block
+ndn_shared_block_t* ndn_name_move_from_comp(ndn_block_t* block){
+
+    /* construct the first component as name TLV */
+    uint8_t* holder = (uint8_t*)malloc(block->len + 4);
+    holder[0] = NDN_TLV_NAME;
+    ndn_block_put_var_number(block->len + 2, holder + 1, block->len + 4 - 1);
+    holder[2] = NDN_TLV_NAME_COMPONENT;
+    ndn_block_put_var_number(block->len, holder + 3, block->len + 4 - 3);
+    memcpy(holder + 4, block->buf, block->len);
+    ndn_block_t temp = { holder, block->len + 4 };
+
+    /* free input block */
+    block->buf = NULL;
+    block->len = 0;
+
+    /* create shared block by move */
+    ndn_shared_block_t* shared = ndn_shared_block_create_by_move(&temp);
+    //free(holder);
+
+    return shared;
+}
 /** @} */

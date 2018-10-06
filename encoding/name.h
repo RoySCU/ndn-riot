@@ -277,6 +277,8 @@ ndn_shared_block_t* ndn_name_append_from_name(ndn_block_t* block, ndn_block_t* b
 //caller should free name.comps manually
 int ndn_name_wire_decode(ndn_block_t* buf, ndn_name_t* name);
 
+ndn_shared_block_t* ndn_name_move_from_comp(ndn_block_t* block);
+
 #ifdef __cplusplus
 }
 #endif
