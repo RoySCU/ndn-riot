@@ -1,4 +1,7 @@
-#include "helper-core.h"
+#include <debug.h>
+#include <thread.h>
+#include <timex.h>
+#include <xtimer.h>
 #include "../face-table.h"
 #include "../app.h"
 #include "../netif.h"
@@ -11,18 +14,15 @@
 #include "../encoding/name.h"
 #include "../encoding/interest.h"
 #include "../encoding/data.h"
-#include "helper-constants.h"
 #include "../msg-type.h"
 #include "helper-block.h"
+#include "helper-msg.h"
+#include "helper-core.h"
 #include "bootstrap.h"
 #include "discovery.h"
 #include "access.h"
 #include "neighbour-table.h"
 #define ENABLE_DEBUG 1
-#include <debug.h>
-#include <thread.h>
-#include <timex.h>
-#include <xtimer.h>
 
 #define NDN_HELPER_STACK_SIZE        (THREAD_STACKSIZE_DEFAULT * 3 / 4)
 #define NDN_HELPER_PRIO              (THREAD_PRIORITY_MAIN - 3)
