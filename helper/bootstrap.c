@@ -90,7 +90,7 @@ static int on_certificate_response(ndn_block_t* interest, ndn_block_t* data)
     ndn_block_t name;
     (void)interest;
 
-    int r = ndn_data_get_name(data, &name1);  //need implementation
+    int r = ndn_data_get_name(data, &name); 
     assert(r == 0);
     DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid ") Certificate Response received, name =",
             handle->id );
@@ -270,7 +270,7 @@ static int ndn_app_express_bootstrapping_request(void)
 
     //making and append the digest of BKpub     
     uint8_t* hash = (uint8_t*)malloc(NDN_CRYPTO_HASH);  
-    sha256(ecc_key_pub, sizeof(ecc_key_pub), NDN_CRYPTO_HASH);                       
+    sha256(ecc_key_pub, sizeof(ecc_key_pub), hash);                       
     sn = ndn_name_append(&sn->block, hash, NDN_CRYPTO_HASH);   
     free(hash);
 

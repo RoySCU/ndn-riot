@@ -22,17 +22,12 @@
 #include "discovery.h"
 #include "access.h"
 #include "neighbour-table.h"
-#define ENABLE_DEBUG 1
 
 #define NDN_HELPER_STACK_SIZE        (THREAD_STACKSIZE_DEFAULT * 3 / 4)
 #define NDN_HELPER_PRIO              (THREAD_PRIORITY_MAIN - 3)
 #define NDN_HELPER_MSG_QUEUE_SIZE    (8U)
 
-//#if ENABLE_DEBUG
-//static char _stack[NDN_HELPER_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRINTF];
-//#else
 static char _stack[NDN_HELPER_STACK_SIZE];
-//#endif
 
 kernel_pid_t ndn_helper_pid = KERNEL_PID_UNDEF;
 
