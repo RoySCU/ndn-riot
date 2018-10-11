@@ -32,12 +32,12 @@ static ndn_block_t anchor_global;
 static ndn_block_t certificate_global;
 static ndn_block_t home_prefix;
 
-static uint64_t dh_p = 10000831; //shared via out-of-band approach
+static uint64_t dh_p = 10000831; //shared_tsk via out-of-band approach
 static uint64_t dh_g = 10000769;
 static uint32_t secrete[4];
 static uint64_t dh_send[4];
 static uint64_t dh_receive[4];
-static uint64_t shared[4];
+static uint64_t shared_tsk[4];
 
 /*static uint8_t com_key_pri[] = {
     0x00, 0x79, 0xD8, 0x8A, 0x5E, 0x4A, 0xF3, 0x2D,
@@ -97,7 +97,7 @@ static int on_certificate_response(ndn_block_t* interest, ndn_block_t* data)
     ndn_name_print(&name);
     putchar('\n');
 
-    r = ndn_data_verify_signature(data, (uint8_t*)shared, NDN_CRYPTO_SYMM_KEY); 
+    r = ndn_data_verify_signature(data, (uint8_t*)shared_tsk, NDN_CRYPTO_SYMM_KEY); 
     if (r != 0)
         DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid "): fail to verify certificate response, use HMAC\n",
                handle->id);
@@ -157,7 +157,7 @@ static int ndn_app_express_certificate_request(void)
     //32 bytes reserved from the value, 2 bytes for header
     uint8_t* signed_token = (uint8_t*)malloc(NDN_CRYPTO_TOKEN + 2);
     
-    ndn_security_make_hmac_signature((uint8_t*)shared, &token_receive, signed_token);
+    ndn_security_make_hmac_signature((uint8_t*)shared_tsk, &token_receive, signed_token);
 
     /* append the signature of token_receive */
     sn = ndn_name_append(&sn->block, signed_token, NDN_CRYPTO_TOKEN + 2);
@@ -167,7 +167,7 @@ static int ndn_app_express_certificate_request(void)
     uint32_t lifetime = 3000;  // 3 seconds
     int r = ndn_app_express_signed_interest(handle, &sn->block, NULL, 
                                             lifetime, NDN_SIG_TYPE_HMAC_SHA256,
-                                            (uint8_t*)shared, NDN_CRYPTO_SYMM_KEY,
+                                            (uint8_t*)shared_tsk, NDN_CRYPTO_SYMM_KEY,
                                             on_certificate_response, 
                                             certificate_timeout); 
     ndn_shared_block_release(sn);
@@ -205,7 +205,6 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     //skip content length (perhaps > 255 bytes)
     uint32_t num;
     int cl = ndn_block_get_var_number(buf, len, &num); 
-    DPRINT("ndn-helper-bootstrap: (pid=%" PRIkernel_pid ") content L length= %d\n", handle->id, cl);
     buf += cl;
     len -= cl;
 
@@ -218,10 +217,10 @@ static int on_bootstrapping_response(ndn_block_t* interest, ndn_block_t* data)
     buf += NDN_CRYPTO_TOKEN; 
     len -= NDN_CRYPTO_TOKEN;
 
-    shared[0] = montgomery(dh_receive[0], secrete[0], dh_p);
-    shared[1] = montgomery(dh_receive[1], secrete[1], dh_p);
-    shared[2] = montgomery(dh_receive[2], secrete[2], dh_p);
-    shared[3] = montgomery(dh_receive[3], secrete[3], dh_p);
+    shared_tsk[0] = montgomery(dh_receive[0], secrete[0], dh_p);
+    shared_tsk[1] = montgomery(dh_receive[1], secrete[1], dh_p);
+    shared_tsk[2] = montgomery(dh_receive[2], secrete[2], dh_p);
+    shared_tsk[3] = montgomery(dh_receive[3], secrete[3], dh_p);
 
     //TODO: to verify the BKpub here
     buf += NDN_CRYPTO_HASH + 2;
