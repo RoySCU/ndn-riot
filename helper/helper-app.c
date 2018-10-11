@@ -40,16 +40,6 @@ ndn_bootstrap_t* ndn_helper_bootstrap_info(void)
     return NULL;
 }
 
-int ndn_helper_discovery_start(void)
-{
-    msg_t msg, reply;
-    msg.type = NDN_HELPER_DISCOVERY_START;
-    msg.content.ptr = NULL;
-    msg_send_receive(&msg, &reply, ndn_helper_pid); 
-
-    return true;
-}
-
 int ndn_helper_discovery_init(void)
 {
     msg_t msg, reply;
@@ -71,6 +61,16 @@ int ndn_helper_discovery_register_prefix(void* ptr)
     return true;
 }
 
+int ndn_helper_discovery_start(void)
+{
+    msg_t msg, reply;
+    msg.type = NDN_HELPER_DISCOVERY_START;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, ndn_helper_pid); 
+
+    return true;
+}
+
 ndn_shared_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple)
 {
     msg_t msg, reply;
@@ -85,6 +85,16 @@ ndn_shared_block_t* ndn_helper_discovery_query(ndn_discovery_t* tuple)
     }
 
     return NULL;
+}
+
+int ndn_helper_access_terminate(void)
+{
+    msg_t msg, reply;
+    msg.type = NDN_HELPER_DISCOVERY_TERMINATE;
+    msg.content.ptr = NULL;
+    msg_send_receive(&msg, &reply, ndn_helper_pid); 
+
+    return 0;
 }
 
 int ndn_helper_access_init(void)

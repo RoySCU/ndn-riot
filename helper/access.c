@@ -370,10 +370,10 @@ void *ndn_helper_access(void* bootstrapTuple)
     msg_t msg_q[_MSG_QUEUE_SIZE];
     msg_init_queue(msg_q, _MSG_QUEUE_SIZE);
 
-    int shouldStop = false;
+    int should_stop = false;
 
     /* start event loop */
-    while (!shouldStop) {
+    while (!should_stop) {
         msg_receive(&from_helper);
 
         switch (from_helper.type) {
@@ -388,7 +388,6 @@ void *ndn_helper_access(void* bootstrapTuple)
 
                 send_ace_producer_interest();
                 ndn_app_run(handle); //success if back here
-                //shouldStop = true;
 
                 break;
 
@@ -404,13 +403,12 @@ void *ndn_helper_access(void* bootstrapTuple)
 
                 send_ace_consumer_interest(option);
                 ndn_app_run(handle);
-                //shouldStop = true;
                 break;
 
             case NDN_HELPER_ACCESS_TERMINATE:
                 DPRINT("ndn-helper-access (pid=%" PRIkernel_pid "): access control terminate\n",
                         thread_getpid());
-                shouldStop = true;
+                should_stop = true;
                 break;
 
             default:

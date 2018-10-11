@@ -444,10 +444,10 @@ void *ndn_helper_discovery(void* bootstrapTuple)
     msg_t msg_q[_MSG_QUEUE_SIZE];
     msg_init_queue(msg_q, _MSG_QUEUE_SIZE);
 
-    //TODO: initialize the NDN here
+    int should_stop = false;
 
     /* start event loop */
-    while (1) {
+    while (!should_stop) {
         msg_receive(&from_helper);
 
         switch (from_helper.type) {
@@ -489,9 +489,7 @@ void *ndn_helper_discovery(void* bootstrapTuple)
             
                 xtimer_sleep(20);
                 ndn_app_run(handle); 
-
                 /* discovery thread will stall here until a terminate instruction from NDN sent in */
-                
                 break;
 
             case NDN_HELPER_DISCOVERY_REGISTER_PREFIX:
@@ -526,9 +524,13 @@ void *ndn_helper_discovery(void* bootstrapTuple)
                 ndn_name_print(&toquery->block);
                 putchar('\n');
                 ndn_app_run(handle);
-
                 break;
-
+            
+            case NDN_HELPER_DISCOVERY_TERMINATE:
+                DPRINT("ndn-helper-discovery (pid=%" PRIkernel_pid "): discovery terminate\n",
+                        thread_getpid());
+                should_stop = true;
+                break;
             default:
                 break;
         }

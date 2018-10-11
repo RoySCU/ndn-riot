@@ -90,7 +90,7 @@ static int _start_bootstrap(void* ptr)
 
         ndn_block_t name;
         ndn_data_get_name(&bootstrapTuple.certificate, &name);
-        DEBUG("certificate name =  ");
+        DEBUG("certificate name = ");
         ndn_name_print(&name);
         putchar('\n');
 
@@ -101,25 +101,26 @@ static int _start_bootstrap(void* ptr)
     return false;
 }
 
-static int _start_discovery(void)
+static int _start_discovery(msg_t* ptr)
 {
     msg_t _send, _reply;
     _reply.content.ptr = NULL;
-
-    //this thread directly registerd on ndn core thread as a application
     _send.content.ptr = _reply.content.ptr;
+    _send.type = ptr->type;
+    
+    if(_send.type = NDN_HELPER_DISCOVERY_TERMINATE){
+        ndn_app_send_msg_to_app(discovery_pid, NULL, NDN_APP_MSG_TYPE_TERMINATE);
+        msg_send_receive(&_send, &_reply, discovery_pid);        
+    }
+    else msg_send_receive(&_send, &_reply, discovery_pid);
 
-    _send.type = NDN_HELPER_DISCOVERY_START;
-    msg_send_receive(&_send, &_reply, discovery_pid);
-
-    DEBUG("ndn-helper: Service Discovery start\n");
     return true;
 }
 
 static int _init_access(void)
 {
     if(bootstrapTuple.certificate.buf == NULL){
-         DEBUG("ndn-helper: haven't bootstrapped yet\n");
+         DEBUG("ndn-helper: ndn-helper should bootstrap first\n");
          return false;
     }
     access_stack = (char*)malloc(THREAD_STACKSIZE_MAIN);
@@ -183,7 +184,7 @@ static int _init_discovery(void)
 {
     //pass bootstrapTuple to discovery scenario
     if(bootstrapTuple.certificate.buf == NULL){
-         DEBUG("helper: haven't bootstrapped yet\n");
+         DEBUG("ndn-helper: ndn-helper should bootstrap first\n");
          return false;
     }
     discovery_stack = (char*)malloc(THREAD_STACKSIZE_DEFAULT);
@@ -201,8 +202,6 @@ static void *_event_loop(void *args)
     (void)args;
     msg_init_queue(msg_q, NDN_HELPER_MSG_QUEUE_SIZE);
 
-    //TODO: initialize the NDN_HELPER here
-
     /* start event loop */
     while (1) {
         msg_receive(&msg);
@@ -210,77 +209,26 @@ static void *_event_loop(void *args)
         switch (msg.type) {
             case NDN_HELPER_BOOTSTRAP_START:
                 DEBUG("ndn-helper: BOOTSTRAP_START message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-                
+                      PRIkernel_pid "\n", msg.sender_pid);                
                 if(_start_bootstrap(msg.content.ptr)){
                     reply.content.ptr = &bootstrapTuple;
                 }
+                else reply.content.ptr = NULL;              
+                msg_reply(&msg, &reply);
+                break;
+            
+            case NDN_HELPER_BOOTSTRAP_INFO:
+                DEBUG("ndn-helper: BOOTSTRAP_INFO message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                if(bootstrapTuple.certificate.buf) reply.content.ptr = &bootstrapTuple;
                 else reply.content.ptr = NULL;
-                
-                msg_reply(&msg, &reply);
-
-                break;
-
-            case NDN_HELPER_DISCOVERY_START:
-                DEBUG("ndn-helper: DISCOVERY_START message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                _start_discovery();
-                
-                reply.content.ptr = NULL; //to invoke the helper caller process
-                msg_reply(&msg, &reply);
-                break;
-
-            case NDN_HELPER_ACCESS_PRODUCER:
-                DEBUG("ndn-helper: ACCESS_PRODUCER message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_access(&msg); 
-
-                msg_reply(&msg, &reply);
-                break;
-
-            case NDN_HELPER_ACCESS_CONSUMER:
-                DEBUG("ndn-helper: ACCESS_CONSUMER message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_access(&msg); 
-                msg_reply(&msg, &reply);
-                break;
-
-            case NDN_HELPER_ACCESS_TERMINATE:
-                DEBUG("ndn-helper: ACCESS_TERMINATE message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_access(&msg); 
-                msg_reply(&msg, &reply);
-                break;
-
-            case NDN_HELPER_DISCOVERY_QUERY:
-                DEBUG("ndn-helper: DISCOVERY_QUERY message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-
-                reply.content.ptr = _start_discovery_query(msg.content.ptr);
-                
                 msg_reply(&msg, &reply);
                 break;
 
             case NDN_HELPER_DISCOVERY_INIT:
                 DEBUG("ndn-helper: DISCOVERY_INIT message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-                               
+                      PRIkernel_pid "\n", msg.sender_pid);                              
                 _init_discovery();
-
-                reply.content.ptr = NULL; //to invoke the helper caller process
-                msg_reply(&msg, &reply);
-                break;
-
-            case NDN_HELPER_ACCESS_INIT:
-                DEBUG("ndn-helper: ACCESS_INIT message received from pid %"
-                      PRIkernel_pid "\n", msg.sender_pid);
-                               
-                _init_access();
-
                 reply.content.ptr = NULL; //to invoke the helper caller process
                 msg_reply(&msg, &reply);
                 break;
@@ -288,21 +236,60 @@ static void *_event_loop(void *args)
             case NDN_HELPER_DISCOVERY_REGISTER_PREFIX:
                 DEBUG("ndn-helper: DISCOVERY_REGISTER_PREFIX message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
-
-                //ptr should point to a string
-                _set_discovery_prefix(msg.content.ptr);
-                
+                _set_discovery_prefix(msg.content.ptr);                
                 reply.content.ptr = NULL; //to invoke the helper caller process
                 msg_reply(&msg, &reply);
                 break;
 
-            case NDN_HELPER_BOOTSTRAP_INFO:
-                DEBUG("ndn-helper: BOOTSTRAP_INFO message received from pid %"
+            case NDN_HELPER_DISCOVERY_START:
+                DEBUG("ndn-helper: DISCOVERY_START message received from pid %"
                       PRIkernel_pid "\n", msg.sender_pid);
+                _start_discovery(&msg);                
+                reply.content.ptr = NULL; //to invoke the helper caller process
+                msg_reply(&msg, &reply);
+                break;
 
-                if(bootstrapTuple.certificate.buf) reply.content.ptr = &bootstrapTuple;
-                else reply.content.ptr = NULL;
+            case NDN_HELPER_DISCOVERY_QUERY:
+                DEBUG("ndn-helper: DISCOVERY_QUERY message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                reply.content.ptr = _start_discovery_query(msg.content.ptr);               
+                msg_reply(&msg, &reply);
+                break;
 
+            case NDN_HELPER_DISCOVERY_TERMINATE:
+                DEBUG("ndn-helper: DISCOVERY_TERMINATE message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                _start_discovery(msg.content.ptr);
+                reply.content.ptr = NULL; //to invoke the helper caller process               
+                msg_reply(&msg, &reply);
+                break;
+
+            case NDN_HELPER_ACCESS_INIT:
+                DEBUG("ndn-helper: ACCESS_INIT message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);                               
+                _init_access();
+                reply.content.ptr = NULL; //to invoke the helper caller process
+                msg_reply(&msg, &reply);
+                break;
+                
+            case NDN_HELPER_ACCESS_PRODUCER:
+                DEBUG("ndn-helper: ACCESS_PRODUCER message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                reply.content.ptr = _start_access(&msg); 
+                msg_reply(&msg, &reply);
+                break;
+
+            case NDN_HELPER_ACCESS_CONSUMER:
+                DEBUG("ndn-helper: ACCESS_CONSUMER message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                reply.content.ptr = _start_access(&msg); 
+                msg_reply(&msg, &reply);
+                break;
+
+            case NDN_HELPER_ACCESS_TERMINATE:
+                DEBUG("ndn-helper: ACCESS_TERMINATE message received from pid %"
+                      PRIkernel_pid "\n", msg.sender_pid);
+                reply.content.ptr = _start_access(&msg); 
                 msg_reply(&msg, &reply);
                 break;
             default:
